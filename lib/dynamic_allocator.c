@@ -174,7 +174,7 @@ void *alloc_block_FF(uint32 size) {
 			//2.lw al difference as8r mn 16
 			if (diff < 16) {
 				//1.hset al element block
-				set_block_data(element, totalSize, 1);
+				set_block_data(element, get_block_size(element), 1);
 				//h4ilha mn al list
 				LIST_REMOVE(&freeBlocksList, element);
 				return element;
@@ -186,11 +186,13 @@ void *alloc_block_FF(uint32 size) {
 				//2.hnset 3la asas al total size
 				set_block_data(element, totalSize, 1);
 				//3.hn7sb al address bta3 al element al gdid
-				void *freeBlockAddr = (uint8*)(element) + get_block_size(element);
+				void *freeBlockAddr = (uint8*) (element)
+						+ get_block_size(element);
 				//4.hncreate new element bsize al difference
 				set_block_data(freeBlockAddr, freeBlockSize, 0);
 				//5.hninsert fy al list b3d al element
-				LIST_INSERT_AFTER(&freeBlocksList, element, (struct BlockElement* )freeBlockAddr);
+				LIST_INSERT_AFTER(&freeBlocksList, element,
+						(struct BlockElement* )freeBlockAddr);
 				//h4il al element ali etmlt mn al free list
 				LIST_REMOVE(&freeBlocksList, element);
 				return element;
@@ -231,50 +233,47 @@ void free_block(void *va) {
 
 	//get prv va
 	uint32 footerPrv = *((uint32 *) va - 2);
-	uint32 sizePrv = footerPrv & (~0x1);
-	void *prv = (uint8 *) va - (sizePrv - 8) - 8;
+	uint32 sizePrv = footerPrv & (~1);
+	bool is_prv_free = !(footerPrv & 1);
 
 	//get nxt va
-	void * nxt = (uint8 *) va + get_block_size(va);
+	uint32 nxtHeader = *(uint32*)((uint8 *) va + get_block_size(va) - sizeof(uint32));
+	bool is_nxt_free = !(nxtHeader & 1);
 
-	bool merged = 0;
-
-	// check if the prv is free
-	if (is_free_block(prv)) {
+	//check if the prv is free
+	if (is_prv_free) {
+		void * prv = (uint8 *) va - sizePrv;
 		// add the two blocks
 		uint32 mergedBlock = get_block_size(prv) + get_block_size(va);
 		// merge (set the new block) with flag 0
 		set_block_data(prv, mergedBlock, 0);
 		// set element to prv
-//		va = prv;
-		merged = 1;
+		va = prv;
 	}
 
-	// check if the nxt is free
-	if (is_free_block(nxt)) {
+	//check if the nxt is free
+	if (is_nxt_free) {
+		void * nxt = (uint8 *) va + get_block_size(va);
 		// add the two blocks
 		uint32 mergedBlock = get_block_size(va) + get_block_size(nxt);
 		// merge (set the new block) with flag 0
 		set_block_data(va, mergedBlock, 0);
-
-		if (merged) {
-			LIST_REMOVE(&freeBlocksList, (struct BlockElement*)nxt);
-		}
+		LIST_REMOVE(&freeBlocksList, (struct BlockElement*) nxt);
 	}
 
 	// if should insert in free list
 	int listSize = LIST_SIZE(&freeBlocksList);
-	if (!merged) {
+	if (!is_prv_free) {
 		//Case 1 list if empty
 		if (listSize == 0) {
 			LIST_INSERT_HEAD(&freeBlocksList, (struct BlockElement * ) va);
 		}
 		//Case 2 the freed block is the first block in the list (head)
-		else if ((struct BlockElement *) va < LIST_FIRST(&freeBlocksList)) {
+		else if (LIST_FIRST(&freeBlocksList) > (struct BlockElement *) va) {
 			LIST_INSERT_HEAD(&freeBlocksList, (struct BlockElement * ) va);
 		}
 		//Case 3 the freed block is the last block in the list (tail)
-		else if ((struct BlockElement *) va > LIST_LAST(&freeBlocksList)) {
+		else if (LIST_LAST(&freeBlocksList) < (struct BlockElement *) va) {
 			LIST_INSERT_TAIL(&freeBlocksList, (struct BlockElement * ) va);
 		}
 		//Case 4 insert in sorted position
@@ -283,7 +282,8 @@ void free_block(void *va) {
 			LIST_FOREACH(element, &freeBlocksList)
 			{
 				if (element > (struct BlockElement *) va) {
-					LIST_INSERT_BEFORE(&freeBlocksList, element, (struct BlockElement* ) va);
+					LIST_INSERT_BEFORE(&freeBlocksList, element,
+							(struct BlockElement* ) va);
 					break;
 				}
 			}
