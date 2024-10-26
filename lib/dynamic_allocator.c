@@ -7,6 +7,7 @@
 #include <inc/assert.h>
 #include <inc/string.h>
 #include "../inc/dynamic_allocator.h"
+#include "inc/queue.h"
 
 //==================================================================================//
 //============================== GIVEN FUNCTIONS ===================================//
@@ -82,8 +83,7 @@ bool is_initialized = 0;
 //==================================
 // [1] INITIALIZE DYNAMIC ALLOCATOR:
 //==================================
-void initialize_dynamic_allocator(uint32 daStart,
-		uint32 initSizeOfAllocatedSpace) {
+void initialize_dynamic_allocator(uint32 daStart, uint32 initSizeOfAllocatedSpace) {
 	//==================================================================================
 	//DON'T CHANGE THESE LINES==========================================================
 	//==================================================================================
@@ -142,9 +142,9 @@ void *alloc_block_FF(uint32 size) {
 			size = DYN_ALLOC_MIN_BLOCK_SIZE;
 		if (!is_initialized) {
 			uint32 required_size = size + 2 * sizeof(int) /*header & footer*/
-					+ 2 * sizeof(int) /*da begin & end*/;
+			+ 2 * sizeof(int) /*da begin & end*/;
 			uint32 da_start = (uint32) sbrk(
-					ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
+			ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
 			uint32 da_break = (uint32) sbrk(0);
 			initialize_dynamic_allocator(da_start, da_break - da_start);
 		}
@@ -206,12 +206,51 @@ void *alloc_block_FF(uint32 size) {
 //=========================================
 // [4] ALLOCATE BLOCK BY BEST FIT:
 //=========================================
-void *alloc_block_BF(uint32 size) {
-	//TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("alloc_block_BF is not implemented yet");
-	//Your Code is Here...
+void* alloc_block_BF(uint32 size) {
+    // TODO: [PROJECT'24.MS1 - BONUS] [3] DYNAMIC ALLOCATOR - alloc_block_BF
+    // COMMENT THE FOLLOWING LINE BEFORE START CODING
+    // panic("alloc_block_BF is not implemented yet");
+    // Your Code is Here...
 
+    if (size == 0) {
+        return NULL;
+    }
+
+    uint32 block_size = size + 8;
+    uint32 alloc_block_size = 4194304000;
+    struct BlockElement* va = NULL;
+    struct BlockElement* element = NULL;
+
+    LIST_FOREACH(element, &freeBlocksList) {
+        if (get_block_size(element) < alloc_block_size && get_block_size(element) >= block_size) {
+            alloc_block_size = get_block_size(element);
+            va = element;
+        }
+    }
+
+    uint32 diff = alloc_block_size - block_size;
+
+    // 1.Large block
+    if (alloc_block_size == 4194304000 && va == NULL) {
+        return NULL;
+    }
+    // 2.small block + internal freg
+    else if (diff < 16) {
+        set_block_data(va, alloc_block_size, 1);
+        LIST_REMOVE(&freeBlocksList, va);
+        return va;
+    }
+    // 3.small block + free block
+    else if (diff >= 16) {
+        set_block_data(va, block_size, 1);
+        void* freeBlockAddr = (uint8*)(va) + get_block_size(va);
+        set_block_data(freeBlockAddr, diff, 0);
+        LIST_INSERT_AFTER(&freeBlocksList, va, (struct BlockElement*)freeBlockAddr);
+        LIST_REMOVE(&freeBlocksList, va);
+        return va;
+    }
+
+    return NULL;
 }
 
 //===================================================
@@ -237,7 +276,7 @@ void free_block(void *va) {
 	bool is_prv_free = !(footerPrv & 1);
 
 	//get nxt va
-	uint32 nxtHeader = *(uint32*)((uint8 *) va + get_block_size(va) - sizeof(uint32));
+	uint32 nxtHeader = *(uint32*) ((uint8 *) va + get_block_size(va) - sizeof(uint32));
 	bool is_nxt_free = !(nxtHeader & 1);
 
 	//check if the prv is free
@@ -258,7 +297,7 @@ void free_block(void *va) {
 		uint32 mergedBlock = get_block_size(va) + get_block_size(nxt);
 		// merge (set the new block) with flag 0
 		set_block_data(va, mergedBlock, 0);
-		LIST_REMOVE(&freeBlocksList, (struct BlockElement*) nxt);
+		LIST_REMOVE(&freeBlocksList, (struct BlockElement* ) nxt);
 	}
 
 	// if should insert in free list
@@ -294,11 +333,95 @@ void free_block(void *va) {
 //=========================================
 // [6] REALLOCATE BLOCK BY FIRST FIT:
 //=========================================
-void *realloc_block_FF(void* va, uint32 new_size) {
-	//TODO: [PROJECT'24.MS1 - #08] [3] DYNAMIC ALLOCATOR - realloc_block_FF
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("realloc_block_FF is not implemented yet");
-	//Your Code is Here...
+void* realloc_block_FF(void* va, uint32 new_size) {
+    // TODO: [PROJECT'24.MS1 - #08] [3] DYNAMIC ALLOCATOR - realloc_block_FF
+    // COMMENT THE FOLLOWING LINE BEFORE START CODING
+    // panic("realloc_block_FF is not implemented yet");
+    // Your Code is Here...
+
+    if (va == NULL && new_size == 0) {
+        return NULL;
+    }
+
+    if (new_size == 0) {
+        free_block(va);
+        return NULL;
+    }
+
+    if (va == NULL) {
+        return alloc_block_FF(new_size);
+    }
+
+    uint32 newRequiredSize = new_size + 8;
+    uint32 vaSize = get_block_size(va);
+	void* nxtVa = (uint8*)va + vaSize;
+
+	if (newRequiredSize < vaSize) {
+        uint32 diff = vaSize - newRequiredSize;
+        set_block_data(va, newRequiredSize, 1);
+
+        if (is_free_block(nxtVa)) {
+            void* newNxt = (uint8*)va + newRequiredSize;
+
+            uint32 mergedBlock = diff + get_block_size(nxtVa);
+            set_block_data(newNxt, mergedBlock, 0);
+
+            // Insert new next
+            LIST_INSERT_AFTER(&freeBlocksList, (struct BlockElement*)nxtVa, (struct BlockElement*)newNxt);
+
+            // Remove old next (next position is changed)
+            LIST_REMOVE(&freeBlocksList, (struct BlockElement*)nxtVa);
+        } else if (diff >= 16) {
+            // Create a new block with difference
+            void* newNxtVa = (uint8*)va + newRequiredSize;
+            set_block_data(newNxtVa, diff, 1);
+
+            // Calling `free_block` should place `newNxt` in the correct position
+			free_block(newNxtVa);
+        } else {
+            // We can't create a new free block so the difference is placed as
+            // internal fragmentation in our current block
+
+            // Correct va size
+            set_block_data(va, vaSize, 1);
+        }
+    } else if (newRequiredSize > vaSize) {
+        int diff = newRequiredSize - vaSize;
+
+        if (is_free_block(nxtVa)) {
+            uint32 totalSize = vaSize + get_block_size(nxtVa);
+
+            if (totalSize >= newRequiredSize) {
+                set_block_data(va, newRequiredSize, 1);
+                uint32 remainingSize = totalSize - newRequiredSize;
+
+                if (remainingSize >= 16) {
+                    void* newNxtVa = (uint8*)va + newRequiredSize;
+                    set_block_data(newNxtVa, remainingSize, 0);
+
+					// Insert new next
+                    LIST_INSERT_AFTER(&freeBlocksList, (struct BlockElement*)nxtVa, (struct BlockElement*)newNxtVa);
+
+					// Remove old next (next position is changed)
+                    LIST_REMOVE(&freeBlocksList, (struct BlockElement*)nxtVa);
+                } else {
+					// We can't create a new free block so the difference is placed as
+					// internal fragmentation in our current block
+
+					// Correct va size
+                    set_block_data(va, totalSize, 1);
+
+					// We fully consumed next block
+                    LIST_REMOVE(&freeBlocksList, (struct BlockElement*)nxtVa);
+                }
+            } else {
+                free_block(va);
+                va = alloc_block_FF(newRequiredSize);
+            }
+        }
+    }
+
+    return va;
 }
 
 /*********************************************************************************************/
