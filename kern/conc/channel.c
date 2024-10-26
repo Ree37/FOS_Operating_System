@@ -28,11 +28,19 @@ void init_channel(struct Channel *chan, char *name)
 // Ref: xv6-x86 OS code
 void sleep(struct Channel *chan, struct spinlock* lk)
 {
-	//TODO: [PROJECT'24.MS1 - #10] [4] LOCKS - sleep
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("sleep is not implemented yet");
-	//Your Code is Here...
+    // TODO: [PROJECT'24.MS1 - #10] [4] LOCKS - sleep
+    // COMMENT THE FOLLOWING LINE BEFORE START CODING
+    // panic("sleep is not implemented yet");
+    // Your Code is Here...
 
+    acquire_spinlock(&ProcessQueues.qlock);
+    struct Env* current_proc = get_cpu_proc();
+    current_proc->env_status = ENV_BLOCKED;
+    enqueue(&chan->queue, current_proc);
+    release_spinlock(lk);
+    sched();
+    acquire_spinlock(lk);
+    release_spinlock(&ProcessQueues.qlock);
 }
 
 //==================================================
@@ -44,10 +52,16 @@ void sleep(struct Channel *chan, struct spinlock* lk)
 // chan MUST be of type "struct Env_Queue" to hold the blocked processes
 void wakeup_one(struct Channel *chan)
 {
-	//TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("wakeup_one is not implemented yet");
-	//Your Code is Here...
+    // TODO: [PROJECT'24.MS1 - #11] [4] LOCKS - wakeup_one
+    // COMMENT THE FOLLOWING LINE BEFORE START CODING
+    // panic("wakeup_one is not implemented yet");
+    // Your Code is Here...)
+    acquire_spinlock(&ProcessQueues.qlock);
+    struct Env* Dequeued_process = dequeue(&(chan->queue));
+    if (Dequeued_process != NULL) {
+        sched_insert_ready0(Dequeued_process);
+    }
+    release_spinlock(&ProcessQueues.qlock);
 }
 
 //====================================================
@@ -58,12 +72,19 @@ void wakeup_one(struct Channel *chan)
 // Ref: xv6-x86 OS code
 // chan MUST be of type "struct Env_Queue" to hold the blocked processes
 
-void wakeup_all(struct Channel *chan)
-{
-	//TODO: [PROJECT'24.MS1 - #12] [4] LOCKS - wakeup_all
-	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("wakeup_all is not implemented yet");
-	//Your Code is Here...
-
+void wakeup_all(struct Channel* chan) {
+    // TODO: [PROJECT'24.MS1 - #12] [4] LOCKS - wakeup_all
+    // COMMENT THE FOLLOWING LINE BEFORE START CODING
+    // panic("wakeup_all is not implemented yet");
+    // Your Code is Here...
+    //
+    acquire_spinlock(&ProcessQueues.qlock);
+    struct Env* Dequeued_process;
+    while (queue_size(&(chan->queue)) > 0) {
+        Dequeued_process = dequeue(&(chan->queue));
+        if (Dequeued_process != NULL) {
+            sched_insert_ready0(Dequeued_process);
+        }
+    }
+    release_spinlock(&ProcessQueues.qlock);
 }
-

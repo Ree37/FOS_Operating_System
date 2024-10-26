@@ -472,7 +472,33 @@ int process_command(int number_of_arguments, char** arguments)
 		 	 }
 			return i;
 		}
-	}
-	return CMD_INVALID;
+		}
+
+	for(int i = 0; i < NUM_OF_COMMANDS; i++){
+		int Number_Of_Matched=0;
+		for(int j=0;j<strlen(arguments[0]);j++)
+		{
+		if(strchr(commands[i].name,arguments[0][j])!=0)
+		{
+			Number_Of_Matched++;
+
+		}
+		}
+
+		if(Number_Of_Matched==strlen(arguments[0]))
+		{
+			LIST_INSERT_HEAD(&foundCommands,&commands[i]);
+		}
+		}
+
+
+	 if (foundCommands.size > 0) {
+		 return CMD_MATCHED;
+	 }
+	 else{return CMD_INVALID;
+	 }
+
 }
+
+
 
