@@ -12,31 +12,110 @@
 //	Otherwise (if no memory OR initial size exceed the given limit): PANIC
 int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate, uint32 daLimit)
 {
-	//TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - initialize_kheap_dynamic_allocator
-	// Write your code here, remove the panic and write your code
-	panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
+		//TODO: [PROJECT'24.MS2 - #01] [1] KERNEL HEAP - initialize_kheap_dynamic_allocator
+		// Write your code here, remove the panic and write your code
+		//panic("initialize_kheap_dynamic_allocator() is not implemented yet...!!");
+
+	    if((initSizeToAllocate+daStart)>daLimit){
+	        panic("initial size to allocate exceeds the hard limit");
+	     }
+
+	    uint32 alignedStart = daStart;
+	    uint32 alignedSegmentBreak = daStart + initSizeToAllocate;
+	    // Align segment break to next page boundary if needed
+	    if (alignedSegmentBreak % PAGE_SIZE != 0) {
+	    	 alignedSegmentBreak = (alignedSegmentBreak + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+	    }
+
+	    if (alignedSegmentBreak > daLimit)
+	    {
+	    	panic("Aligned segment break exceeds memory limit");
+	    }
+
+
+	KernHeapStart = (void *)daStart;
+	segment_break = (void *)(daStart+initSizeToAllocate);
+	hard_limit = (void *)daLimit;
+
+
+	/*if(!is_initialized){
+		 panic("no enough memory");
+	}*/
+	for(uint32 i = daStart ; i < (uint32)segment_break ; i+=PAGE_SIZE )
+		{
+
+		   struct FrameInfo * FrameWillBeMapped = NULL;
+		   int ret = allocate_frame(&FrameWillBeMapped);
+		   if(ret!=0)
+			  panic("No allocated Frames");
+		   map_frame(ptr_page_directory,FrameWillBeMapped,i, PERM_WRITEABLE);
+		}
+
+	initialize_dynamic_allocator(daStart,initSizeToAllocate);
+
+		return 0;
 }
+
 
 void* sbrk(int numOfPages)
 {
 	/* numOfPages > 0: move the segment break of the kernel to increase the size of its heap by the given numOfPages,
-	 * 				you should allocate pages and map them into the kernel virtual address space,
-	 * 				and returns the address of the previous break (i.e. the beginning of newly mapped memory).
-	 * numOfPages = 0: just return the current position of the segment break
-	 *
-	 * NOTES:
-	 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
-	 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
-	 */
+		 * 				you should allocate pages and map them into the kernel virtual address space,
+		 * 				and returns the address of the previous break (i.e. the beginning of newly mapped memory).
+		 * numOfPages = 0: just return the current position of the segment break
+		 *
+		 * NOTES:
+		 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
+		 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
+		 */
 
-	//MS2: COMMENT THIS LINE BEFORE START CODING==========
-	return (void*)-1 ;
-	//====================================================
+		//MS2: COMMENT THIS LINE BEFORE START CODING==========
+		//return (void*)-1 ;
+		//====================================================
 
-	//TODO: [PROJECT'24.MS2 - #02] [1] KERNEL HEAP - sbrk
-	// Write your code here, remove the panic and write your code
-	panic("sbrk() is not implemented yet...!!");
+		//TODO: [PROJECT'24.MS2 - #02] [1] KERNEL HEAP - sbrk
+		// Write your code here, remove the panic and write your code
+		//panic("sbrk() is not implemented yet...!!");
+
+
+    if (numOfPages == 0) {
+        return segment_break;
+    }
+
+    uint32 current_break = (uint32)segment_break;
+    uint32 new_brk = current_break + (numOfPages * PAGE_SIZE);
+
+
+    if (new_brk >(uint32) hard_limit) {
+        return (void*)-1;
+    }
+
+   	    uint32 old_brk = current_break;
+   	    for (int i = 0; i < numOfPages; i++) {
+
+   	        struct FrameInfo* frame = NULL;
+   	        int ret = allocate_frame(&frame);
+   	        if (ret == E_NO_MEM) {
+   	            return (void*)-1;
+   	        }
+
+   	    int r = map_frame(ptr_page_directory,frame,current_break, PERM_WRITEABLE);
+   	    if (r == E_NO_MEM){
+   	 		free_frame(frame) ;
+   	 		return (void*) -1 ;
+   	 	}
+
+   	        current_break += PAGE_SIZE;
+   	    }
+
+
+      //move break
+    segment_break =(void*) new_brk;
+
+
+    return (void*)old_brk;
 }
+
 
 //TODO: [PROJECT'24.MS2 - BONUS#2] [1] KERNEL HEAP - Fast Page Allocator
 
@@ -44,11 +123,78 @@ void* kmalloc(unsigned int size)
 {
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
-	kpanic_into_prompt("kmalloc() is not implemented yet...!!");
+	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
+      uint32 MAX =(uint32) KERNEL_HEAP_MAX - (uint32)(hard_limit + PAGE_SIZE);
+      uint32 num_of_pages;
+      uint32 *start =NULL;
+      uint32 count =0;
 
-	// use "isKHeapPlacementStrategyFIRSTFIT() ..." functions to check the current strategy
+      if(size > MAX){
+    	  return NULL;
+      }
+
+     if (size <= (PAGE_SIZE/2)) // block allocator
+     {
+       void * ret =(void*) alloc_block_FF(size);
+       return ret;
+     }
+
+     if (size % PAGE_SIZE != 0) // lw size as8ir mn mult of page size
+     {
+     	 num_of_pages = size/PAGE_SIZE + 1;
+
+     }
+
+     else if (size % PAGE_SIZE == 0)
+     {
+     	num_of_pages = size/PAGE_SIZE ;
+
+     }
+
+
+       for(uint32 i = (uint32)(hard_limit + PAGE_SIZE) ; i < (uint32) KERNEL_HEAP_MAX ; i+=PAGE_SIZE )
+       {
+
+    	   uint32 *ptr_page_table = NULL;
+    	   get_page_table(ptr_page_directory ,i ,&ptr_page_table );
+
+    	   if(ptr_page_table != NULL && (*ptr_page_table & PERM_PRESENT))
+    	   {
+    		   continue;
+    	   }
+
+    	   struct FrameInfo* frame = NULL;
+    	   int ret = allocate_frame(&frame);
+    	   if (ret == E_NO_MEM)
+    	   {
+    	         return NULL;
+    	    }
+
+    	    int r = map_frame(ptr_page_directory,frame,i, PERM_WRITEABLE|PERM_PRESENT);
+    	    if (r == E_NO_MEM)
+    	    {
+    	        free_frame(frame) ;
+    	      	return NULL ;
+    	    }
+    	     count++;
+
+    	    if(start == NULL){
+    	    	start = (void*)i;
+    	    }
+
+    	    if(count == num_of_pages){
+    	    	return start;
+    	    	break;
+    	    }
+
+       }
+
+
+
+     return start;
 
 }
+
 
 void kfree(void* virtual_address)
 {
