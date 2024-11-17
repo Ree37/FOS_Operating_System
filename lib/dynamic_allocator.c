@@ -141,10 +141,8 @@ void *alloc_block_FF(uint32 size) {
 		if (size < DYN_ALLOC_MIN_BLOCK_SIZE)
 			size = DYN_ALLOC_MIN_BLOCK_SIZE;
 		if (!is_initialized) {
-			uint32 required_size = size + 2 * sizeof(int) /*header & footer*/
-			+ 2 * sizeof(int) /*da begin & end*/;
-			uint32 da_start = (uint32) sbrk(
-			ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
+			uint32 required_size = size + 2 * sizeof(int) /*header & footer*/+ 2 * sizeof(int) /*da begin & end*/;
+			uint32 da_start = (uint32) sbrk(ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
 			uint32 da_break = (uint32) sbrk(0);
 			initialize_dynamic_allocator(da_start, da_break - da_start);
 		}
@@ -163,6 +161,8 @@ void *alloc_block_FF(uint32 size) {
 
 	//h7tag a7sb al size 3la b3do
 	uint32 totalSize = size + 8;
+	//bool lw mlha4 mkan
+	bool is_allocate =0;
 	//hlf 3al list
 	struct BlockElement *element = NULL;
 	LIST_FOREACH(element, &freeBlocksList)
@@ -170,6 +170,7 @@ void *alloc_block_FF(uint32 size) {
 		if (totalSize <= get_block_size(element)) {
 			//1.hn7sb al difference
 			int32 diff = get_block_size(element) - totalSize;
+			is_allocate =1;
 
 			//2.lw al difference as8r mn 16
 			if (diff < 16) {
@@ -200,7 +201,30 @@ void *alloc_block_FF(uint32 size) {
 		}
 	}
 
-	// call sbrk
+	// bool Sbrk
+		void* SBRK;
+		uint32 num_of_pages;
+		if (is_allocate == 0){
+
+			if (totalSize % PAGE_SIZE != 0){ // lw size as8ir mn mult of page size
+				num_of_pages = totalSize/PAGE_SIZE + 1;
+				SBRK = sbrk(num_of_pages) ;
+			}
+
+			else if (totalSize % PAGE_SIZE == 0){
+				num_of_pages = totalSize/PAGE_SIZE ;
+				SBRK = sbrk(num_of_pages) ;
+			}
+
+			if(SBRK != (void*) -1){
+				uint32 *END = (SBRK + (num_of_pages * PAGE_SIZE)) - sizeof(int);
+				*END = 1;
+				set_block_data(SBRK ,(num_of_pages * PAGE_SIZE), 0 );
+				free_block(SBRK);
+				return alloc_block_FF(totalSize - 8);
+			}
+
+		}
 	return NULL;
 }
 //=========================================
@@ -216,15 +240,32 @@ void* alloc_block_BF(uint32 size) {
         return NULL;
     }
 
+    {
+    		if (size % 2 != 0)
+    			size++;	//ensure that the size is even (to use LSB as allocation flag)
+    		if (size < DYN_ALLOC_MIN_BLOCK_SIZE)
+    			size = DYN_ALLOC_MIN_BLOCK_SIZE;
+    		if (!is_initialized) {
+    			uint32 required_size = size + 2 * sizeof(int) /*header & footer*/
+    			+ 2 * sizeof(int) /*da begin & end*/;
+    			uint32 da_start = (uint32) sbrk(
+    			ROUNDUP(required_size, PAGE_SIZE) / PAGE_SIZE);
+    			uint32 da_break = (uint32) sbrk(0);
+    			initialize_dynamic_allocator(da_start, da_break - da_start);
+    		}
+    	}
+
     uint32 block_size = size + 8;
     uint32 alloc_block_size = 4194304000;
     struct BlockElement* va = NULL;
     struct BlockElement* element = NULL;
+    bool is_allocate = 0;
 
     LIST_FOREACH(element, &freeBlocksList) {
         if (get_block_size(element) < alloc_block_size && get_block_size(element) >= block_size) {
             alloc_block_size = get_block_size(element);
             va = element;
+            is_allocate=1;
         }
     }
 
@@ -250,7 +291,18 @@ void* alloc_block_BF(uint32 size) {
         return va;
     }
 
-    return NULL;
+    // bool Sbrk
+    		void* SBRK;
+    		if (is_allocate == 0){
+    			SBRK = sbrk(block_size);
+    			if(SBRK != (void*) -1){
+    				return SBRK;
+    			}
+    		}
+
+    	return NULL;
+
+
 }
 
 //===================================================
@@ -348,9 +400,15 @@ void* realloc_block_FF(void* va, uint32 new_size) {
         return NULL;
     }
 
+
+    if (new_size % 2 != 0)
+    	new_size++;	//ensure that the size is even (to use LSB as allocation flag)
+    if (new_size < DYN_ALLOC_MIN_BLOCK_SIZE)
+    	new_size = DYN_ALLOC_MIN_BLOCK_SIZE;
+
     if (va == NULL) {
-        return alloc_block_FF(new_size);
-    }
+           return alloc_block_FF(new_size);
+       }
 
     uint32 newRequiredSize = new_size + 8;
     uint32 vaSize = get_block_size(va);
