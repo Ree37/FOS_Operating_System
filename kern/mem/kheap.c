@@ -124,8 +124,10 @@ void* kmalloc(unsigned int size)
 	//TODO: [PROJECT'24.MS2 - #03] [1] KERNEL HEAP - kmalloc
 	// Write your code here, remove the panic and write your code
 	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
-      uint32 MAX =(uint32) KERNEL_HEAP_MAX - (uint32)(hard_limit + PAGE_SIZE);
-      uint32 num_of_pages;
+      uint32 hard = (uint32) hard_limit;
+      uint32 total = hard + PAGE_SIZE;
+	  uint32 *start_page_alloc =(uint32*) total ;
+      uint32 MAX =(uint32) KERNEL_HEAP_MAX - (uint32)start_page_alloc;
       uint32 *start =NULL;
       uint32 count =0;
 
@@ -139,59 +141,55 @@ void* kmalloc(unsigned int size)
        return ret;
      }
 
-     if (size % PAGE_SIZE != 0) // lw size as8ir mn mult of page size
-     {
-     	 num_of_pages = size/PAGE_SIZE + 1;
-
-     }
-
-     else if (size % PAGE_SIZE == 0)
-     {
-     	num_of_pages = size/PAGE_SIZE ;
-
-     }
+     uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
 
-       for(uint32 i = (uint32)(hard_limit + PAGE_SIZE) ; i < (uint32) KERNEL_HEAP_MAX ; i+=PAGE_SIZE )
+       for(uint32 i =(uint32)start_page_alloc  ; i < (uint32) KERNEL_HEAP_MAX ; i+=PAGE_SIZE )
        {
 
     	   uint32 *ptr_page_table = NULL;
-    	   get_page_table(ptr_page_directory ,i ,&ptr_page_table );
+    	   struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory , i , &ptr_page_table);
+           if (ptr_frame_info != NULL){
+        	   continue;
+           }
 
-    	   if(ptr_page_table != NULL && (*ptr_page_table & PERM_PRESENT))
-    	   {
-    		   continue;
-    	   }
-
-    	   struct FrameInfo* frame = NULL;
-    	   int ret = allocate_frame(&frame);
+    	   int ret = allocate_frame(&ptr_frame_info);
     	   if (ret == E_NO_MEM)
     	   {
     	         return NULL;
     	    }
 
-    	    int r = map_frame(ptr_page_directory,frame,i, PERM_WRITEABLE|PERM_PRESENT);
-    	    if (r == E_NO_MEM)
-    	    {
-    	        free_frame(frame) ;
-    	      	return NULL ;
-    	    }
-    	     count++;
+
+    	    int r = map_frame(ptr_page_directory,ptr_frame_info,i, PERM_WRITEABLE|PERM_PRESENT);
 
     	    if(start == NULL){
-    	    	start = (void*)i;
-    	    }
+    	       start = (void*)i;
+    	     }
 
-    	    if(count == num_of_pages){
-    	    	return start;
+            count++;
+            num_of_pages--;
+            if (num_of_pages != 0 && i == (KERNEL_HEAP_MAX - PAGE_SIZE)) {
+
+                for (uint32 j = (uint32)start; j < (uint32)(i+PAGE_SIZE); j += PAGE_SIZE) {
+                    struct FrameInfo *frame = get_frame_info(ptr_page_directory, j, &ptr_page_table);
+                    free_frame(frame);
+                }
+                return NULL;
+            }
+
+    	    if(num_of_pages == 0){
     	    	break;
     	    }
 
+
        }
 
-
+     if(num_of_pages != 0){
+    	 return NULL;
+     }
 
      return start;
+
 
 }
 
