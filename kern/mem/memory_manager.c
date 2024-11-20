@@ -358,6 +358,7 @@ int map_frame(uint32 *ptr_page_directory, struct FrameInfo *ptr_frame_info, uint
 {
 	// Fill this function in
 	uint32 physical_address = to_physical_address(ptr_frame_info);
+	ptr_frame_info->virtualAddress=virtual_address;
 	uint32 *ptr_page_table;
 	if( get_page_table(ptr_page_directory, virtual_address, &ptr_page_table) == TABLE_NOT_EXIST)
 	{
