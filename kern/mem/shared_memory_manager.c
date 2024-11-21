@@ -66,8 +66,13 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 {
 	//TODO: [PROJECT'24.MS2 - #16] [4] SHARED MEMORY - create_frames_storage()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("create_frames_storage is not implemented yet");
+	//panic("create_frames_storage is not implemented yet");
 	//Your Code is Here...
+	struct FrameInfo** frame = kmalloc(sizeof(void*) * numOfFrames);
+	if(frame == NULL){
+		return NULL;
+	}
+	return frame;
 
 }
 
@@ -102,6 +107,7 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 		kfree(share);
 		return NULL;
 	}
+	return share;
 
 }
 
@@ -161,8 +167,13 @@ void free_share(struct Share* ptrShare)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - free_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("free_share is not implemented yet");
+	//panic("free_share is not implemented yet");
 	//Your Code is Here...
+	acquire_spinlock(&AllShares.shareslock);
+	LIST_REMOVE(&AllShares.shares_list,ptrShare);
+	kfree(ptrShare->framesStorage);
+	kfree(ptrShare);
+	release_spinlock(&AllShares.shareslock);
 
 }
 //========================
