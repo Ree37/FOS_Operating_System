@@ -879,14 +879,14 @@ void *User_Kern_Stack=kmalloc(KERNEL_STACK_SIZE);
 if(User_Kern_Stack==NULL){
 	panic("failed");
 }
-uint32 guardP = (uint32)User_Kern_Stack + KERNEL_STACK_SIZE - PAGE_SIZE;
+uint32 guardP = (uint32)User_Kern_Stack;
 uint32* ptr_page_table = NULL;
-	int res = get_page_table(ptr_user_page_directory, guardP, &ptr_page_table);
-	if (res != 0 || ptr_page_table == NULL) {
+	 get_page_table(ptr_user_page_directory, guardP, &ptr_page_table);
+	if ( ptr_page_table == NULL) {
 		panic("Page table for user kernel stack guard page could not be found or created");
 	}
    ptr_page_table[PTX(guardP)] &= ~PERM_PRESENT;
-   return (void*)(User_Kern_Stack + PAGE_SIZE);
+   return (void*)(User_Kern_Stack);
 
 #else
 	if (KERNEL_HEAP_MAX - __cur_k_stk < KERNEL_STACK_SIZE)
