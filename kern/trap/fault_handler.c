@@ -242,21 +242,23 @@ if(wsSize < (faulted_env->page_WS_max_size))
 // Write your code here, remove the panic and write your code
 //panic("page_fault_handler().PLACEMENT is not implemented yet...!!");
 //refer to the project presentation and documentation for details
-struct Frame_info *Frame_For_Faulted_Page=allocate_frame();
-int ret=pf_read_env_page(faulted_env,fault_va);
+struct FrameInfo *Frame_For_Faulted_Page = NULL;
+allocate_frame(&Frame_For_Faulted_Page);
+if (!Frame_For_Faulted_Page) {
+        panic("No free frame available to handle page fault!");
+    }
+int ret=pf_read_env_page(faulted_env,(void *)fault_va);
 if (ret == E_PAGE_NOT_EXIST_IN_PF) {
  if((fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX)||(fault_va>=USTACKTOP&&fault_va<(USTACKTOP-PAGE_SIZE))){
 
-    		  int ret = pf_add_empty_env_page(faulted_env, fault_va, 0);
+ int ret = pf_add_empty_env_page(faulted_env, fault_va, 0);
 
 
     	  }else {
     		  env_exit();
     	  }
    }
-map_frame(faulted_env->env_page_directory,Frame_For_Faulted_Page,fault_va,PERM_WRITEABLE);
-
-
+map_frame(faulted_env->env_page_directory,Frame_For_Faulted_Page, fault_va,PERM_WRITEABLE);
 
 
 

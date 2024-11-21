@@ -36,6 +36,7 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	return w;
 
 }
+
 inline void env_page_ws_invalidate(struct Env* e, uint32 virtual_address)
 {
 	if (isPageReplacmentAlgorithmLRU(PG_REP_LRU_LISTS_APPROX))
