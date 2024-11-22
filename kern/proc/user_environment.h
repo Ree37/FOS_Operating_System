@@ -14,7 +14,7 @@
 extern struct UserProgramInfo* ptr_UserPrograms;
 extern struct Env *envs;		// All environments
 //extern struct Env *curenv;	// Current environment
-
+void* create_user_kern_stack(uint32* ptr_user_page_directory);
 ///===================================================================================
 struct Env* get_cpu_proc(void);			// get the the current running process on the CPU
 void set_cpu_proc(struct Env* p);		// set the process to be run on CPU
