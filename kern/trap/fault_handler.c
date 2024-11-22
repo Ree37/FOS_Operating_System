@@ -152,20 +152,31 @@ void fault_handler(struct Trapframe *tf)
 					//(e.g. pointing to unmarked user heap page, kernel or wrong access rights),
 					//your code is here
 		            if(fault_va>=(uint32)USER_HEAP_START&& fault_va<(uint32)USER_HEAP_MAX){
-		            	  if ((faulted_env->env_page_directory[PDX(fault_va)] & PERM_PRESENT) == 0){
-		            		panic("try to access unmapped page");
-		            	}
-		            uint32 page_permissions=pt_get_page_permissions(faulted_env->env_page_directory,fault_va);
-		            if (((page_permissions & PERM_WRITEABLE) == 0) && ((page_permissions &  PERM_PRESENT) != 0)) {
-		                panic("The page exists but is read-only.");
-		            }
-		            }
-		            if(fault_va>=KERNEL_BASE&&fault_va<KERNEL_HEAP_MAX){
+		            	 uint32 page_permissions1=pt_get_page_permissions(faulted_env->env_page_directory,fault_va);
+		            	 if((page_permissions1&PERM_AVAILABLE)!=0 && ((page_permissions1 & PERM_USER)==0)){
 
-		            	panic("try to access kernel space");
+		            			// panic(" access an unmarked page in user heap");
+		            		cprintf("access an unmarked page in user heap");
+		            			 env_exit();
+		            	 }
+		            uint32 page_permissions2=pt_get_page_permissions(faulted_env->env_page_directory,fault_va);
+		            if (((page_permissions2 & PERM_WRITEABLE) == 0) &&((page_permissions2 &  PERM_PRESENT) != 0)) {
+		               // panic("The page exists but is read-only.");
+		            	cprintf("page exists but is read-only");
+		            	env_exit();
 		            }
-
+		            }
+		          else if(fault_va>=KERNEL_HEAP_START&&fault_va<KERNEL_HEAP_MAX){
+		            	//panic("try to access kernel space");
+		        	 cprintf("access kernel space");
+		        	  env_exit();
+		            }
+		            else{
+		             cprintf("first exit");
 		            env_exit();
+
+
+		            }
 					/*============================================================================================*/
 
 
@@ -237,13 +248,13 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 #endif
 
 	    if (wsSize < (faulted_env->page_WS_max_size))
-	    {
-
+	    { cprintf("second function");
 	        struct FrameInfo *Frame_For_Faulted_Page = NULL;
              allocate_frame(&Frame_For_Faulted_Page);
 	        if (!Frame_For_Faulted_Page) {
 	            panic("No free frame available to handle page fault!");
 	        }
+	        cprintf("second function 2");
 	        int ret = pf_read_env_page(faulted_env, (void *)fault_va);
 	        if (ret == E_PAGE_NOT_EXIST_IN_PF)
 	        {
@@ -254,17 +265,21 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 	                if (ret != 0) {
 	                    panic("Failed to add an empty page to the page file");
 	                }
-	            }
-	            else
+
+	       /*     else
 	            {
+	            	cprintf("exit from my env exit");
                  env_exit();
-	            }
+	            }*/
 	        }
+	        cprintf("second function 3");
 
 	        map_frame(faulted_env->env_page_directory, Frame_For_Faulted_Page, fault_va, PERM_WRITEABLE);
 	        struct WorkingSetElement *newElement = env_page_ws_list_create_element(faulted_env, fault_va);
 	        faulted_env->page_last_WS_element = newElement;
 	    }
+	            }
+
 
 
 

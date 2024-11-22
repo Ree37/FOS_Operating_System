@@ -17,6 +17,7 @@ void _main(void)
 	bool found ;
 	//("STEP 0: checking Initial WS entries ...\n");
 	{
+		cprintf("beodlfkak");
 		found = sys_check_WS_list(expectedInitialVAs, 14, 0, 1);
 		if (found != 1) panic("INITIAL PAGE WS entry checking failed! Review size of the WS..!!");
 
@@ -25,6 +26,7 @@ void _main(void)
 			panic("INITIAL PAGE last WS checking failed! Review size of the WS..!!");
 		/*====================================*/
 	}
+	cprintf("second");
 	int eval = 0;
 	bool is_correct = 1;
 	int usedDiskPages = sys_pf_calculate_allocated_pages() ;
