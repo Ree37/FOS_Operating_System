@@ -127,7 +127,7 @@ int sys_check_WS_list(uint32* WS_list_content, int actual_WS_list_size, uint32 l
 	{
 		if(LIST_SIZE(&(env->page_WS_list)) != actual_WS_list_size)
 		{
-			return WS_list_validation = 0;
+			return WS_list_validation = LIST_SIZE(&(env->page_WS_list));
 		}
 	}
 	//if it's required to check the last_WS_element
@@ -154,6 +154,7 @@ int sys_check_WS_list(uint32* WS_list_content, int actual_WS_list_size, uint32 l
 		int idx_WS_list = 0;
 
 		//Search for the correct index of the current WS element (if any)
+
 		if (last_WS_element_content)
 		{
 			for (int i = 0; i < actual_WS_list_size; ++i)

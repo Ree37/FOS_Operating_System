@@ -21,18 +21,14 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("env_page_ws_list_create_element is not implemented yet");
 	//Your Code is Here...
-	if(LIST_SIZE(&e->page_WS_list) >= e->page_WS_max_size){
-		panic("Not enough space in WS List");
-	}
+
+
 	struct WorkingSetElement* w = kmalloc(sizeof(struct WorkingSetElement));
 	if(w == NULL){
 		panic("working set panic");
 	}
 	w->virtual_address = virtual_address;
-	LIST_INSERT_TAIL(&e->page_WS_list,w);
-	if(LIST_SIZE(&e->page_WS_list) == e->page_WS_max_size){
-		e->page_last_WS_element = w;
-	}
+
 	return w;
 
 }

@@ -11,11 +11,64 @@
 void* sbrk(int increment)
 {
 	return (void*) sys_sbrk(increment);
+
 }
 
 //=================================
 // [2] ALLOCATE SPACE IN USER HEAP:
 //=================================
+
+struct program_size {
+	uint32 size  ;
+	void *start ;
+};
+struct program_size prog[2000] = {0};
+///////////////////////////////////////////////////////////
+void* firstva(uint32 num , uint32 start){
+	uint32 count = 0;
+    void* va = NULL;
+
+
+	for(uint32 i = start ; i < (uint32) USER_HEAP_MAX ; i+=PAGE_SIZE){
+		bool mark = 0;
+
+		for(int x = 0 ; x<2000 ; x++){
+		     if (prog[x].start == (void*)i){
+		    	 i = (uint32)prog[x].start + (prog[x].size*PAGE_SIZE) - PAGE_SIZE;
+		    	 mark = 1;
+		    	 count = 0;
+		    	 break;
+
+		     }
+		}
+
+	     if (mark == 0) {
+	    	 if (count == 0){
+	    		 va =(void*) i;
+	    	 }
+	    	 count++;
+	    	 if (count == num){
+
+	    		 break;
+	    	 }
+	     }
+	}
+	if (count == num){
+		for(int x = 0 ; x<2000 ; x++){
+		    if (prog[x].size == 0){
+		         prog[x].size = num;
+		         prog[x].start = va;
+		         break;
+		    }
+		}
+		return va;
+
+	}
+	else {
+		return NULL;
+	}
+}
+
 void* malloc(uint32 size)
 {
 	//==============================================================
@@ -24,12 +77,32 @@ void* malloc(uint32 size)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #12] [3] USER HEAP [USER SIDE] - malloc()
 	// Write your code here, remove the panic and write your code
-	panic("malloc() is not implemented yet...!!");
-	return NULL;
+	//panic("malloc() is not implemented yet...!!");
+	//return NULL;
 	//Use sys_isUHeapPlacementStrategyFIRSTFIT() and	sys_isUHeapPlacementStrategyBESTFIT()
 	//to check the current strategy
 
-}
+	uint32 hard = (uint32) myEnv->hard_limit;
+    uint32 total = hard + PAGE_SIZE;
+	uint32 *start_page_alloc =(uint32*) total ; // start of page alloc
+
+	uint32 MAX =(uint32) USER_HEAP_MAX - (uint32)start_page_alloc; // size of page alloc
+	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+	if(size > MAX){
+		 return NULL;
+	}
+
+	if (size <= (PAGE_SIZE/2)){ // block allocator
+
+	    void * alloc_block =(void*) alloc_block_FF(size);
+		return alloc_block;
+	}
+
+	void* alloc_page = firstva(num_of_pages ,(uint32)start_page_alloc);
+	sys_allocate_user_mem((uint32)alloc_page , size);
+	return alloc_page;
+	}
 
 //=================================
 // [3] FREE SPACE FROM USER HEAP:

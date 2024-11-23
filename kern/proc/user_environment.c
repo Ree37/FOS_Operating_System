@@ -879,14 +879,14 @@ void *User_Kern_Stack=kmalloc(KERNEL_STACK_SIZE);
 if(User_Kern_Stack==NULL){
 	panic("failed");
 }
-uint32 guardP = (uint32)User_Kern_Stack + KERNEL_STACK_SIZE - PAGE_SIZE;
+uint32 guardP = (uint32)User_Kern_Stack;
 uint32* ptr_page_table = NULL;
-	int res = get_page_table(ptr_user_page_directory, guardP, &ptr_page_table);
-	if (res != 0 || ptr_page_table == NULL) {
+	 get_page_table(ptr_user_page_directory, guardP, &ptr_page_table);
+	if ( ptr_page_table == NULL) {
 		panic("Page table for user kernel stack guard page could not be found or created");
 	}
    ptr_page_table[PTX(guardP)] &= ~PERM_PRESENT;
-   return (void*)(User_Kern_Stack + PAGE_SIZE);
+   return (void*)(User_Kern_Stack);
 
 #else
 	if (KERNEL_HEAP_MAX - __cur_k_stk < KERNEL_STACK_SIZE)
@@ -897,6 +897,7 @@ uint32* ptr_page_table = NULL;
 //	panic("KERNEL HEAP is OFF! user kernel stack is not supported");
 #endif
 }
+
 
 /*2024*/
 //===========================================================
@@ -925,6 +926,16 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//	1) there's no initial allocations for the dynamic allocator of the user heap (=0)
 	//	2) call the initialize_dynamic_allocator(..) to complete the initialization
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
+
+	if(daStart == daLimit){
+	    panic("initial size to allocate exceeds the hard limit");
+     }
+
+	e->UserHeapStart = (uint32 *)daStart;
+	e->segment_break = (uint32 *)daStart;
+	e->hard_limit = (uint32 *)daLimit;
+
+	initialize_dynamic_allocator(daStart,0);
 }
 
 //==============================================================
