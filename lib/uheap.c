@@ -137,7 +137,28 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 {
 	//TODO: [PROJECT'24.MS2 - #20] [4] SHARED MEMORY [USER SIDE] - sget()
 	// Write your code here, remove the panic and write your code
-	panic("sget() is not implemented yet...!!");
+	//panic("sget() is not implemented yet...!!");
+
+	//get size of the shared variable
+	int size = sys_getSizeOfSharedObject(ownerEnvID, sharedVarName);
+	//checking if it is existing
+	if(size == 0){
+		return NULL;
+	}
+	else{
+		//applying first fit to find suitable place
+		void* va = malloc(size);
+		//check if there is suitable space in heap
+		if(va == NULL){
+			return NULL;
+		}
+		else{
+			sys_getSharedObject(ownerEnvID, sharedVarName, va);
+			return va;
+		}
+
+	}
+
 	return NULL;
 }
 
