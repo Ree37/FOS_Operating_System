@@ -129,6 +129,7 @@ struct Share* get_share(int32 ownerID, char* name)
 	acquire_spinlock(&AllShares.shareslock);
 	LIST_FOREACH(i, &AllShares.shares_list){
 		if(i->ownerID == ownerID && strcmp(i->name,name)){
+			release_spinlock(&AllShares.shareslock);
 			return i;
 		}
 	}
@@ -152,10 +153,17 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	//1. Allocate & Initialize a new share object
 	if (get_share(ownerID,shareName) != NULL){
 		return E_SHARED_MEM_EXISTS;
-	} 
+	}
+
+	uint32 page_num = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+	acquire_spinlock(&MemFrameLists.mfllock);
+	if (LIST_SIZE(&MemFrameLists.free_frame_list) < page_num) {
+		release_spinlock(&MemFrameLists.mfllock);
+		return E_NO_SHARE;
+	}
+	release_spinlock(&MemFrameLists.mfllock);
 
 	obj = create_share(ownerID,shareName,size,isWritable);
-
 	if (obj == NULL) {
 		return E_NO_SHARE;
 	} else {
@@ -163,30 +171,21 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 		LIST_INSERT_HEAD(&AllShares.shares_list, obj);
 		release_spinlock(&AllShares.shareslock);
 	}
+	cprintf("[TRACE]: createSharedObject va: %x, page_num: %d, name: %s\n", virtual_address, page_num, obj->name);
 
-	uint32 page_num = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
-
-	acquire_spinlock(&MemFrameLists.mfllock);
-	if (LIST_SIZE(&MemFrameLists.free_frame_list) < page_num) {
-		return E_NO_SHARE;		
-		release_spinlock(&MemFrameLists.mfllock);
-	}
-	release_spinlock(&MemFrameLists.mfllock);
-
-	struct FrameInfo *frame;
 	for(int i = 0; i < page_num; i++){
 		//2. Add it to the (shares_list)
 		//3. Allocate ALL required space in the physical memory on a PAGE boundary
 		//Map them on the given "virtual_address" on the current process with WRITABLE permissions
 		//Add each allocated frame to "frames_storage" of this shared object to keep track of them for later use
-
+		struct FrameInfo *frame;
 		allocate_frame(&frame);
 		if (frame == NULL) {
 			panic("No free frames");
-		} else{
+		} else {
 			map_frame(myenv->env_page_directory,frame,(uint32)virtual_address,PERM_PRESENT | PERM_WRITEABLE | PERM_USER);
 			obj->framesStorage[i] = frame;
-			virtual_address = virtual_address + PAGE_SIZE;
+			virtual_address += PAGE_SIZE;
 		}
 	}
 
@@ -218,7 +217,7 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 				perms = perms | PERM_WRITEABLE;
 			}
 
-			map_frame(myenv->env_page_directory, share->framesStorage[i], virtual_address, perms);
+			map_frame(myenv->env_page_directory, share->framesStorage[i], (uint32)virtual_address, perms);
 			virtual_address += PAGE_SIZE;
 		}
 		return share->ID;

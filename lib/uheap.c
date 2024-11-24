@@ -129,7 +129,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	// panic("smalloc() is not implemented yet...!!");
 
 	//1. Apply FIRST FIT strategy to search the PAGE ALLOCATOR in user heap for suitable space to the required allocation size (on 4 KB BOUNDARY)
-	size = ROUNDUP(size, PAGE_SIZE);
+//	size = ROUNDUP(size, PAGE_SIZE);
 	void *va = malloc(size);
 	//2. if no suitable space found, return NULL
 	if (va == NULL)
@@ -139,8 +139,13 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	else
 	{
 		// Call sys_createSharedObject(...) to invoke the Kernel for allocation of shared variable
-		sys_createSharedObject(sharedVarName, size, isWritable, va);
-		return va;
+		int32 result = sys_createSharedObject(sharedVarName, size, isWritable, va);
+		if (result != E_SHARED_MEM_EXISTS && result != E_NO_MEM)
+		{
+			return va;
+		}
+
+		return NULL;
 	}
 }
 
@@ -160,6 +165,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 		return NULL;
 	}
 	else{
+//		size = ROUNDUP(size, PAGE_SIZE);
 		//applying first fit to find suitable place
 		void* va = malloc(size);
 		//check if there is suitable space in heap
@@ -167,8 +173,11 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 			return NULL;
 		}
 		else{
-			sys_getSharedObject(ownerEnvID, sharedVarName, va);
-			return va;
+			int result = sys_getSharedObject(ownerEnvID, sharedVarName, va);
+			if (result != E_SHARED_MEM_NOT_EXISTS) {
+				return va;
+			}
+			return NULL;
 		}
 
 	}
