@@ -126,8 +126,22 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	//==============================================================
 	//TODO: [PROJECT'24.MS2 - #18] [4] SHARED MEMORY [USER SIDE] - smalloc()
 	// Write your code here, remove the panic and write your code
-	panic("smalloc() is not implemented yet...!!");
-	return NULL;
+	// panic("smalloc() is not implemented yet...!!");
+
+	//1. Apply FIRST FIT strategy to search the PAGE ALLOCATOR in user heap for suitable space to the required allocation size (on 4 KB BOUNDARY)
+	size = ROUNDUP(size, PAGE_SIZE);
+	void *va = malloc(size);
+	//2. if no suitable space found, return NULL
+	if (va == NULL)
+	{
+		return NULL;
+	}
+	else
+	{
+		// Call sys_createSharedObject(...) to invoke the Kernel for allocation of shared variable
+		sys_createSharedObject(sharedVarName, size, isWritable, va);
+		return va;
+	}
 }
 
 //========================================

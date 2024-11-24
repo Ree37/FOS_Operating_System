@@ -122,11 +122,20 @@ struct Share* get_share(int32 ownerID, char* name)
 {
 	//TODO: [PROJECT'24.MS2 - #17] [4] SHARED MEMORY - get_share()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("get_share is not implemented yet");
+	//panic("get_share is not implemented yet");
 	//Your Code is Here...
+	struct Share *i;
 
+	acquire_spinlock(&AllShares.shareslock);
+	LIST_FOREACH(i, &AllShares.shares_list){
+		if(i->ownerID == ownerID && strcmp(i->name,name)){
+			return i;
+		}
+	}
+	release_spinlock(&AllShares.shareslock);
+
+	return NULL;
 }
-
 //=========================
 // [4] Create Share Object:
 //=========================
@@ -134,10 +143,54 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 {
 	//TODO: [PROJECT'24.MS2 - #19] [4] SHARED MEMORY [KERNEL SIDE] - createSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("createSharedObject is not implemented yet");
+	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 
 	struct Env* myenv = get_cpu_proc(); //The calling environment
+	struct Share *obj;
+
+	//1. Allocate & Initialize a new share object
+	if (get_share(ownerID,shareName) != NULL){
+		return E_SHARED_MEM_EXISTS;
+	} 
+
+	obj = create_share(ownerID,shareName,size,isWritable);
+
+	if (obj == NULL) {
+		return E_NO_SHARE;
+	} else {
+		acquire_spinlock(&AllShares.shareslock);
+		LIST_INSERT_HEAD(&AllShares.shares_list, obj);
+		release_spinlock(&AllShares.shareslock);
+	}
+
+	uint32 page_num = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
+
+	acquire_spinlock(&MemFrameLists.mfllock);
+	if (LIST_SIZE(&MemFrameLists.free_frame_list) < page_num) {
+		return E_NO_SHARE;		
+		release_spinlock(&MemFrameLists.mfllock);
+	}
+	release_spinlock(&MemFrameLists.mfllock);
+
+	struct FrameInfo *frame;
+	for(int i = 0; i < page_num; i++){
+		//2. Add it to the (shares_list)
+		//3. Allocate ALL required space in the physical memory on a PAGE boundary
+		//Map them on the given "virtual_address" on the current process with WRITABLE permissions
+		//Add each allocated frame to "frames_storage" of this shared object to keep track of them for later use
+
+		allocate_frame(&frame);
+		if (frame == NULL) {
+			panic("No free frames");
+		} else{
+			map_frame(myenv->env_page_directory,frame,(uint32)virtual_address,PERM_PRESENT | PERM_WRITEABLE | PERM_USER);
+			obj->framesStorage[i] = frame;
+			virtual_address = virtual_address + PAGE_SIZE;
+		}
+	}
+
+	return obj->ID;
 }
 
 
