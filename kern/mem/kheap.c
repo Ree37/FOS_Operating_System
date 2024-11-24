@@ -116,34 +116,38 @@ struct program_size {
 	uint32 size  ;
 	void *start ;
 };
-struct program_size prog[100] = {0};
+struct program_size prog[2000] = {0};
 ///////////////////////////////////////////////////////////
 void* firstva(uint32 num , uint32 start){
 	uint32 count = 0;
     void* va = NULL;
 
-	for(uint32 i = start ; i < (uint32) KERNEL_HEAP_MAX ; i+=PAGE_SIZE){
-	    uint32 *ptr_page_table = NULL;
-	    struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory , i , &ptr_page_table);
+    for(uint32 i = start ; i < (uint32)KERNEL_HEAP_MAX  ; i+=PAGE_SIZE){
+    		bool mark = 0;
 
-	     if (ptr_frame_info != NULL){
-	    	 count=0;
-	    	 continue;
+    		for(int x = 0 ; x<2000 ; x++){
+    		     if (prog[x].start == (void*)i){
+    		    	 i = (uint32)prog[x].start + (prog[x].size*PAGE_SIZE) - PAGE_SIZE;
+    		    	 mark = 1;
+    		    	 count = 0;
+    		    	 break;
 
-	       }
-	     else {
-	    	 if (count == 0){
-	    		 va =(void*) i;
-	    	 }
-	    	 count++;
-	    	 if (count == num){
+    		     }
+    		}
 
-	    		 break;
-	    	 }
-	     }
-	}
+    	     if (mark == 0) {
+    	    	 if (count == 0){
+    	    		 va =(void*) i;
+    	    	 }
+    	    	 count++;
+    	    	 if (count == num){
+
+    	    		 break;
+    	    	 }
+    	     }
+    	}
 	if (count == num){
-		for(int x = 0 ; x<100 ; x++){
+		for(int x = 0 ; x<2000 ; x++){
 		    if (prog[x].size == 0){
 		         prog[x].size = num;
 		         prog[x].start = va;
@@ -222,7 +226,7 @@ void kfree(void* virtual_address)
 	}
 
 	else {
-		for (uint32 x = 0 ; x<100 ; x++ ){
+		for (uint32 x = 0 ; x<2000 ; x++ ){
 			if (prog[x].start == virtual_address){
 				size = prog[x].size;
 				index = x;

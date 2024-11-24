@@ -90,16 +90,19 @@ void* malloc(uint32 size)
 	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
 	if(size > MAX){
+
 		 return NULL;
 	}
 
 	if (size <= (PAGE_SIZE/2)){ // block allocator
-
 	    void * alloc_block =(void*) alloc_block_FF(size);
 		return alloc_block;
 	}
 
 	void* alloc_page = firstva(num_of_pages ,(uint32)start_page_alloc);
+	if (alloc_page == NULL){
+		 return NULL;
+	}
 	sys_allocate_user_mem((uint32)alloc_page , size);
 	return alloc_page;
 	}
@@ -111,7 +114,30 @@ void free(void* virtual_address)
 {
 	//TODO: [PROJECT'24.MS2 - #14] [3] USER HEAP [USER SIDE] - free()
 	// Write your code here, remove the panic and write your code
-	panic("free() is not implemented yet...!!");
+	//panic("free() is not implemented yet...!!");
+	if (virtual_address == NULL || virtual_address == (void*)myEnv->hard_limit || virtual_address < (void*)myEnv->UserHeapStart || virtual_address >(void*)USER_HEAP_MAX){
+			panic("Invalid address");
+		}
+	uint32 size = 0;
+	uint32 index;
+	if (virtual_address < (void*)myEnv->segment_break ){
+	    free_block(virtual_address);
+    }
+
+	else {
+	      for (uint32 x = 0 ; x<2000 ; x++ ){
+			if (prog[x].start == virtual_address){
+				size = prog[x].size;
+				index = x;
+					break;
+			}
+	     }
+	      prog[index].size = 0;
+	      prog[index].start = NULL;
+	     sys_free_user_mem((uint32)virtual_address , size);
+
+	}
+
 }
 
 

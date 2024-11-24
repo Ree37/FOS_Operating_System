@@ -209,10 +209,23 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #15] [3] USER HEAP [KERNEL SIDE] - free_user_mem
 	// Write your code here, remove the panic and write your code
-	panic("free_user_mem() is not implemented yet...!!");
+	//panic("free_user_mem() is not implemented yet...!!");
 
 
 	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem
+
+	uint32 va = virtual_address;
+	while(size > 0 ){
+
+		pt_set_page_permissions(e->env_page_directory , va , 0 , PERM_AVAILABLE);
+			env_page_ws_invalidate( e , va);
+			pf_remove_env_page( e , va);
+
+		size--;
+		va+=PAGE_SIZE;
+	}
+
+
 }
 
 //=====================================
