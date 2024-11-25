@@ -29,7 +29,6 @@ inline struct WorkingSetElement* env_page_ws_list_create_element(struct Env* e, 
 	}
 	w->virtual_address = virtual_address;
 
-
 	return w;
 
 }
@@ -81,6 +80,7 @@ inline void env_page_ws_invalidate(struct Env* e, uint32 virtual_address)
 	}
 	else
 	{
+
 		struct WorkingSetElement *wse;
 		LIST_FOREACH(wse, &(e->page_WS_list))
 		{

@@ -139,9 +139,32 @@ void* sys_sbrk(int numOfPages)
 	//TODO: [PROJECT'24.MS2 - #11] [3] USER HEAP - sys_sbrk
 	/*====================================*/
 	/*Remove this line before start coding*/
-	return (void*)-1 ;
+	//return (void*)-1 ;
 	/*====================================*/
 	struct Env* env = get_cpu_proc(); //the current running Environment to adjust its break limit
+
+	if (numOfPages == 0) {
+	      return env->segment_break;
+	}
+
+	uint32 current_brk = (uint32)env->segment_break;
+	uint32 new_brk = current_brk + (numOfPages * PAGE_SIZE);
+
+	if (new_brk >(uint32) env->hard_limit) {
+	       return (void*)-1;
+	}
+
+	struct freeFramesCounters free_frame =  calculate_available_frames();
+	int total = (int)free_frame.freeBuffered + (int)free_frame.freeNotBuffered;
+	if(total < numOfPages){
+		return (void*)-1;
+	}
+
+	allocate_user_mem(env , current_brk , numOfPages * PAGE_SIZE);
+	env->segment_break =(void*) new_brk;
+
+
+	return (void*)current_brk;
 
 
 }
@@ -159,7 +182,18 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #13] [3] USER HEAP [KERNEL SIDE] - allocate_user_mem()
 	// Write your code here, remove the panic and write your code
-	panic("allocate_user_mem() is not implemented yet...!!");
+	//panic("allocate_user_mem() is not implemented yet...!!");
+	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+	while(num_of_pages>0){
+		uint32 *ptr_page_table = NULL;
+		int ret = get_page_table(e->env_page_directory ,virtual_address , &ptr_page_table );
+			if (ret == TABLE_NOT_EXIST || ptr_page_table == NULL ){
+				create_page_table(e->env_page_directory , virtual_address);
+			}
+			pt_set_page_permissions(e->env_page_directory , virtual_address , PERM_AVAILABLE , 0);
+		num_of_pages--;
+		virtual_address+=PAGE_SIZE;
+	}
 }
 
 //=====================================
@@ -175,10 +209,23 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 
 	//TODO: [PROJECT'24.MS2 - #15] [3] USER HEAP [KERNEL SIDE] - free_user_mem
 	// Write your code here, remove the panic and write your code
-	panic("free_user_mem() is not implemented yet...!!");
+	//panic("free_user_mem() is not implemented yet...!!");
 
 
 	//TODO: [PROJECT'24.MS2 - BONUS#3] [3] USER HEAP [KERNEL SIDE] - O(1) free_user_mem
+
+	uint32 va = virtual_address;
+	while(size > 0 ){
+
+		pt_set_page_permissions(e->env_page_directory , va , 0 , PERM_AVAILABLE);
+			env_page_ws_invalidate( e , va);
+			pf_remove_env_page( e , va);
+
+		size--;
+		va+=PAGE_SIZE;
+	}
+
+
 }
 
 //=====================================

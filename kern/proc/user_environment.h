@@ -19,7 +19,7 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory);
 struct Env* get_cpu_proc(void);			// get the the current running process on the CPU
 void set_cpu_proc(struct Env* p);		// set the process to be run on CPU
 int envid2env(int32  envid, struct Env **env_store, bool checkperm);
-
+void* create_user_kern_stack(uint32* ptr_user_page_directory);
 ///===================================================================================
 /*Initialize the envs array and add its elements to the list*/
 void env_init(void);

@@ -898,6 +898,7 @@ uint32* ptr_page_table = NULL;
 #endif
 }
 
+
 /*2024*/
 //===========================================================
 // 6) DELETE USER KERNEL STACK (One Per Process):
@@ -925,6 +926,16 @@ void initialize_uheap_dynamic_allocator(struct Env* e, uint32 daStart, uint32 da
 	//	1) there's no initial allocations for the dynamic allocator of the user heap (=0)
 	//	2) call the initialize_dynamic_allocator(..) to complete the initialization
 	//panic("initialize_uheap_dynamic_allocator() is not implemented yet...!!");
+
+	if(daStart == daLimit){
+	    panic("initial size to allocate exceeds the hard limit");
+     }
+
+	e->UserHeapStart = (uint32 *)daStart;
+	e->segment_break = (uint32 *)daStart;
+	e->hard_limit = (uint32 *)daLimit;
+
+	initialize_dynamic_allocator(daStart,0);
 }
 
 //==============================================================

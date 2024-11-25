@@ -37,10 +37,6 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	segment_break = (void *)(daStart+initSizeToAllocate);
 	hard_limit = (void *)daLimit;
 
-
-	/*if(!is_initialized){
-		 panic("no enough memory");
-	}*/
 	for(uint32 i = daStart ; i < (uint32)segment_break ; i+=PAGE_SIZE )
 		{
 
@@ -82,15 +78,15 @@ void* sbrk(int numOfPages)
         return segment_break;
     }
 
-    uint32 current_break = (uint32)segment_break;
-    uint32 new_brk = current_break + (numOfPages * PAGE_SIZE);
+    uint32 current_brk = (uint32)segment_break;
+    uint32 new_brk = current_brk + (numOfPages * PAGE_SIZE);
 
 
     if (new_brk >(uint32) hard_limit) {
         return (void*)-1;
     }
 
-   	    uint32 old_brk = current_break;
+   	    uint32 old_brk = current_brk;
    	    for (int i = 0; i < numOfPages; i++) {
 
    	        struct FrameInfo* frame = NULL;
@@ -99,13 +95,13 @@ void* sbrk(int numOfPages)
    	            return (void*)-1;
    	        }
 
-   	    int r = map_frame(ptr_page_directory,frame,current_break, PERM_WRITEABLE);
+   	    int r = map_frame(ptr_page_directory,frame,current_brk, PERM_WRITEABLE);
    	    if (r == E_NO_MEM){
    	 		free_frame(frame) ;
    	 		return (void*) -1 ;
    	 	}
 
-   	        current_break += PAGE_SIZE;
+   	        current_brk += PAGE_SIZE;
    	    }
 
 
@@ -120,34 +116,38 @@ struct program_size {
 	uint32 size  ;
 	void *start ;
 };
-struct program_size prog[10] = {0};
+struct program_size prog[2000] = {0};
 ///////////////////////////////////////////////////////////
 void* firstva(uint32 num , uint32 start){
 	uint32 count = 0;
     void* va = NULL;
 
-	for(uint32 i = start ; i < (uint32) KERNEL_HEAP_MAX ; i+=PAGE_SIZE){
-	    uint32 *ptr_page_table = NULL;
-	    struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory , i , &ptr_page_table);
+    for(uint32 i = start ; i < (uint32)KERNEL_HEAP_MAX  ; i+=PAGE_SIZE){
+    		bool mark = 0;
 
-	     if (ptr_frame_info != NULL){
-	    	 count=0;
-	    	 continue;
+    		for(int x = 0 ; x<2000 ; x++){
+    		     if (prog[x].start == (void*)i){
+    		    	 i = (uint32)prog[x].start + (prog[x].size*PAGE_SIZE) - PAGE_SIZE;
+    		    	 mark = 1;
+    		    	 count = 0;
+    		    	 break;
 
-	       }
-	     else {
-	    	 if (count == 0){
-	    		 va =(void*) i;
-	    	 }
-	    	 count++;
-	    	 if (count == num){
+    		     }
+    		}
 
-	    		 break;
-	    	 }
-	     }
-	}
+    	     if (mark == 0) {
+    	    	 if (count == 0){
+    	    		 va =(void*) i;
+    	    	 }
+    	    	 count++;
+    	    	 if (count == num){
+
+    	    		 break;
+    	    	 }
+    	     }
+    	}
 	if (count == num){
-		for(int x = 0 ; x<10 ; x++){
+		for(int x = 0 ; x<2000 ; x++){
 		    if (prog[x].size == 0){
 		         prog[x].size = num;
 		         prog[x].start = va;
@@ -226,7 +226,7 @@ void kfree(void* virtual_address)
 	}
 
 	else {
-		for (uint32 x = 0 ; x<10 ; x++ ){
+		for (uint32 x = 0 ; x<2000 ; x++ ){
 			if (prog[x].start == virtual_address){
 				size = prog[x].size;
 				index = x;
