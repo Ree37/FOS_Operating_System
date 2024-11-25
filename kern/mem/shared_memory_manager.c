@@ -128,7 +128,7 @@ struct Share* get_share(int32 ownerID, char* name)
 
 	acquire_spinlock(&AllShares.shareslock);
 	LIST_FOREACH(i, &AllShares.shares_list){
-		if(i->ownerID == ownerID && strcmp(i->name,name)){
+		if(i->ownerID == ownerID && strcmp(i->name,name) == 0){
 			release_spinlock(&AllShares.shareslock);
 			return i;
 		}

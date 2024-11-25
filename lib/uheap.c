@@ -155,7 +155,7 @@ void* smalloc(char *sharedVarName, uint32 size, uint8 isWritable)
 	// panic("smalloc() is not implemented yet...!!");
 
 	//1. Apply FIRST FIT strategy to search the PAGE ALLOCATOR in user heap for suitable space to the required allocation size (on 4 KB BOUNDARY)
-//	size = ROUNDUP(size, PAGE_SIZE);
+	size = ROUNDUP(size, PAGE_SIZE);
 	void *va = malloc(size);
 	//2. if no suitable space found, return NULL
 	if (va == NULL)
@@ -191,7 +191,7 @@ void* sget(int32 ownerEnvID, char *sharedVarName)
 		return NULL;
 	}
 	else{
-//		size = ROUNDUP(size, PAGE_SIZE);
+		size = ROUNDUP(size, PAGE_SIZE);
 		//applying first fit to find suitable place
 		void* va = malloc(size);
 		//check if there is suitable space in heap
