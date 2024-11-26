@@ -95,6 +95,7 @@ void* malloc(uint32 size)
 	}
 
 	if (size <= (PAGE_SIZE/2)){ // block allocator
+		//cprintf("malloc\n");
 	    void * alloc_block =(void*) alloc_block_FF(size);
 		return alloc_block;
 	}

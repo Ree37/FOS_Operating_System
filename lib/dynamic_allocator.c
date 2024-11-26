@@ -159,42 +159,28 @@ void *alloc_block_FF(uint32 size) {
 		return NULL;
 	}
 
-	//h7tag a7sb al size 3la b3do
 	uint32 totalSize = size + 8;
-	//bool lw mlha4 mkan
 	bool is_allocate =0;
-	//hlf 3al list
 	struct BlockElement *element = NULL;
 	LIST_FOREACH(element, &freeBlocksList)
 	{
 		if (totalSize <= get_block_size(element)) {
-			//1.hn7sb al difference
 			int32 diff = get_block_size(element) - totalSize;
 			is_allocate =1;
 
-			//2.lw al difference as8r mn 16
 			if (diff < 16) {
-				//1.hset al element block
 				set_block_data(element, get_block_size(element), 1);
-				//h4ilha mn al list
 				LIST_REMOVE(&freeBlocksList, element);
 				return element;
 			}
-			//2.lw al difference akbr aw tsawi mn 16
 			else if (diff >= 16) {
-				//1.hnminus al difference mn al block al kbira
 				uint32 freeBlockSize = get_block_size(element) - totalSize;
-				//2.hnset 3la asas al total size
 				set_block_data(element, totalSize, 1);
-				//3.hn7sb al address bta3 al element al gdid
 				void *freeBlockAddr = (uint8*) (element)
 						+ get_block_size(element);
-				//4.hncreate new element bsize al difference
 				set_block_data(freeBlockAddr, freeBlockSize, 0);
-				//5.hninsert fy al list b3d al element
 				LIST_INSERT_AFTER(&freeBlocksList, element,
 						(struct BlockElement* )freeBlockAddr);
-				//h4il al element ali etmlt mn al free list
 				LIST_REMOVE(&freeBlocksList, element);
 				return element;
 			}
@@ -205,16 +191,8 @@ void *alloc_block_FF(uint32 size) {
 		void* SBRK;
 		uint32 num_of_pages;
 		if (is_allocate == 0){
-
-			if (totalSize % PAGE_SIZE != 0){ // lw size as8ir mn mult of page size
-				num_of_pages = totalSize/PAGE_SIZE + 1;
-				SBRK = sbrk(num_of_pages) ;
-			}
-
-			else if (totalSize % PAGE_SIZE == 0){
-				num_of_pages = totalSize/PAGE_SIZE ;
-				SBRK = sbrk(num_of_pages) ;
-			}
+			uint32 num_of_pages = (totalSize + PAGE_SIZE - 1) / PAGE_SIZE;
+			SBRK = sbrk(num_of_pages) ;
 
 			if(SBRK != (void*) -1){
 				uint32 *END = (SBRK + (num_of_pages * PAGE_SIZE)) - sizeof(int);

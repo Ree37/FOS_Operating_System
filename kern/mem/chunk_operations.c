@@ -160,7 +160,19 @@ void* sys_sbrk(int numOfPages)
 		return (void*)-1;
 	}
 
-	allocate_user_mem(env , current_brk , numOfPages * PAGE_SIZE);
+    uint32 virtual_address = current_brk;
+    while(numOfPages>0){
+    		uint32 *ptr_page_table = NULL;
+    		int ret = get_page_table(env->env_page_directory ,virtual_address , &ptr_page_table );
+    			if (ptr_page_table == NULL ){
+    				create_page_table(env->env_page_directory , virtual_address);
+    			}
+    			//ptr_page_table[PTX(virtual_address)] |= (PERM_AVAILABLE);
+    			pt_set_page_permissions(env->env_page_directory , virtual_address , PERM_AVAILABLE , 0);
+    			numOfPages--;
+    		virtual_address+=PAGE_SIZE;
+    	}
+    //move sgment
 	env->segment_break =(void*) new_brk;
 
 
