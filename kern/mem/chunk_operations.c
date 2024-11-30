@@ -154,11 +154,11 @@ void* sys_sbrk(int numOfPages)
 	       return (void*)-1;
 	}
 
-	struct freeFramesCounters free_frame =  calculate_available_frames();
+	/*struct freeFramesCounters free_frame =  calculate_available_frames();
 	int total = (int)free_frame.freeBuffered + (int)free_frame.freeNotBuffered;
 	if(total < numOfPages){
 		return (void*)-1;
-	}
+	}*/
 
     uint32 virtual_address = current_brk;
     while(numOfPages>0){

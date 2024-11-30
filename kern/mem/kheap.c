@@ -20,26 +20,12 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	        panic("initial size to allocate exceeds the hard limit");
 	     }
 
-	    uint32 alignedStart = daStart;
-	    uint32 alignedSegmentBreak = daStart + initSizeToAllocate;
-	    // Align segment break to next page boundary if needed
-	    if (alignedSegmentBreak % PAGE_SIZE != 0) {
-	    	 alignedSegmentBreak = (alignedSegmentBreak + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
-	    }
-
-	    if (alignedSegmentBreak > daLimit)
-	    {
-	    	panic("Aligned segment break exceeds memory limit");
-	    }
-
-
 	KernHeapStart = (void *)daStart;
 	segment_break = (void *)(daStart+initSizeToAllocate);
 	hard_limit = (void *)daLimit;
 
 	for(uint32 i = daStart ; i < (uint32)segment_break ; i+=PAGE_SIZE )
 		{
-
 		   struct FrameInfo * FrameWillBeMapped = NULL;
 		   int ret = allocate_frame(&FrameWillBeMapped);
 		   if(ret!=0)
@@ -116,7 +102,7 @@ struct program_size {
 	uint32 size  ;
 	void *start ;
 };
-struct program_size prog[2000] = {0};
+struct program_size prog[2000] = {0}; // array to  store start va and num of pages
 ///////////////////////////////////////////////////////////
 void* firstva(uint32 num , uint32 start){
 	uint32 count = 0;
