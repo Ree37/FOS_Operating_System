@@ -159,7 +159,7 @@ void fault_handler(struct Trapframe *tf)
 			                }
 			            }
 
-						else if (fault_va >= USER_LIMIT) {
+						 if (fault_va >= USER_LIMIT) {
 			                env_exit();
 			            }
 
