@@ -89,15 +89,19 @@ void* malloc(uint32 size)
 	uint32 MAX =(uint32) USER_HEAP_MAX - (uint32)start_page_alloc; // size of page alloc
 	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
+
 	if(size > MAX){
 
 		 return NULL;
 	}
 
 	if (size <= (PAGE_SIZE/2)){ // block allocator
-		//cprintf("malloc\n");
 	    void * alloc_block =(void*) alloc_block_FF(size);
 		return alloc_block;
+	}
+
+	if ((int)sys_calculate_free_frames() < num_of_pages){
+			 return NULL;
 	}
 
 	void* alloc_page = firstva(num_of_pages ,(uint32)start_page_alloc);
