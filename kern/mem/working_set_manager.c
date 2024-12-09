@@ -80,6 +80,7 @@ inline void env_page_ws_invalidate(struct Env* e, uint32 virtual_address)
 	}
 	else
 	{
+
 		struct WorkingSetElement *wse;
 		LIST_FOREACH(wse, &(e->page_WS_list))
 		{
