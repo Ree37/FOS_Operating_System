@@ -4,6 +4,8 @@
 #include <inc/dynamic_allocator.h>
 #include "memory_manager.h"
 
+struct spinlock kheap; // lock
+
 //Initialize the dynamic allocator of kernel heap with the given start address, size & limit
 //All pages in the given range should be allocated
 //Remember: call the initialize_dynamic_allocator(..) to complete the initialization
@@ -24,6 +26,8 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 	segment_break = (void *)(daStart+initSizeToAllocate);
 	hard_limit = (void *)daLimit;
 
+	//init_spinlock(&kheap, "Data of kheap");
+
 	for(uint32 i = daStart ; i < (uint32)segment_break ; i+=PAGE_SIZE )
 		{
 		   struct FrameInfo * FrameWillBeMapped = NULL;
@@ -41,16 +45,6 @@ int initialize_kheap_dynamic_allocator(uint32 daStart, uint32 initSizeToAllocate
 
 void* sbrk(int numOfPages)
 {
-	/* numOfPages > 0: move the segment break of the kernel to increase the size of its heap by the given numOfPages,
-		 * 				you should allocate pages and map them into the kernel virtual address space,
-		 * 				and returns the address of the previous break (i.e. the beginning of newly mapped memory).
-		 * numOfPages = 0: just return the current position of the segment break
-		 *
-		 * NOTES:
-		 * 	1) Allocating additional pages for a kernel dynamic allocator will fail if the free frames are exhausted
-		 * 		or the break exceed the limit of the dynamic allocator. If sbrk fails, return -1
-		 */
-
 		//MS2: COMMENT THIS LINE BEFORE START CODING==========
 		//return (void*)-1 ;
 		//====================================================
@@ -58,7 +52,6 @@ void* sbrk(int numOfPages)
 		//TODO: [PROJECT'24.MS2 - #02] [1] KERNEL HEAP - sbrk
 		// Write your code here, remove the panic and write your code
 		//panic("sbrk() is not implemented yet...!!");
-
 
     if (numOfPages == 0) {
         return segment_break;
@@ -78,12 +71,11 @@ void* sbrk(int numOfPages)
    	        struct FrameInfo* frame = NULL;
    	        int ret = allocate_frame(&frame);
    	        if (ret == E_NO_MEM) {
-   	            return (void*)-1;
    	        }
 
    	    int r = map_frame(ptr_page_directory,frame,current_brk, PERM_WRITEABLE);
    	    if (r == E_NO_MEM){
-   	 		free_frame(frame) ;
+   	 		free_frame(frame);
    	 		return (void*) -1 ;
    	 	}
 
@@ -94,7 +86,6 @@ void* sbrk(int numOfPages)
       //move break
     segment_break =(void*) new_brk;
 
-
     return (void*)old_brk;
 }
 
@@ -102,16 +93,20 @@ struct program_size {
 	uint32 size  ;
 	void *start ;
 };
-struct program_size prog[2000] = {0}; // array to  store start va and num of pages
+struct program_size prog[8000] = {0}; // array to  store start va and num of pages
+
+
 ///////////////////////////////////////////////////////////
 void* firstva(uint32 num , uint32 start){
+
 	uint32 count = 0;
     void* va = NULL;
+
 
     for(uint32 i = start ; i < (uint32)KERNEL_HEAP_MAX  ; i+=PAGE_SIZE){
     		bool mark = 0;
 
-    		for(int x = 0 ; x<2000 ; x++){
+    		for(int x = 0 ; x<8000 ; x++){
     		     if (prog[x].start == (void*)i){
     		    	 i = (uint32)prog[x].start + (prog[x].size*PAGE_SIZE) - PAGE_SIZE;
     		    	 mark = 1;
@@ -127,13 +122,12 @@ void* firstva(uint32 num , uint32 start){
     	    	 }
     	    	 count++;
     	    	 if (count == num){
-
-    	    		 break;
+      	    		 break;
     	    	 }
     	     }
     	}
 	if (count == num){
-		for(int x = 0 ; x<2000 ; x++){
+		for(int x = 0 ; x<8000 ; x++){
 		    if (prog[x].size == 0){
 		         prog[x].size = num;
 		         prog[x].start = va;
@@ -141,7 +135,6 @@ void* firstva(uint32 num , uint32 start){
 		    }
 		}
 		return va;
-
 	}
 	else {
 		return NULL;
@@ -156,6 +149,9 @@ void* kmalloc(unsigned int size)
 	// Write your code here, remove the panic and write your code
 	//kpanic_into_prompt("kmalloc() is not implemented yet...!!");
 
+	     //acquire_spinlock(&kheap);
+
+
 	uint32 hard = (uint32) hard_limit;
 	uint32 total = hard + PAGE_SIZE;
     uint32 *start_page_alloc =(uint32*) total ; // start of page alloc
@@ -164,11 +160,13 @@ void* kmalloc(unsigned int size)
 	uint32 num_of_pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
 
 	if(size > MAX){
+        //release_spinlock(&kheap);
 	    return NULL;
 	 }
 
 	 if (size <= (PAGE_SIZE/2)){ // block allocator
 		   void * alloc_block =(void*) alloc_block_FF(size);
+		   //release_spinlock(&kheap);
 	       return alloc_block;
 	 }
 
@@ -180,6 +178,7 @@ void* kmalloc(unsigned int size)
     	 struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory ,(uint32)alloc_page , &ptr_page_table);
     	 int alloc = allocate_frame(&ptr_frame_info);
     	 if (alloc == E_NO_MEM){
+         		//release_spinlock(&kheap);
     	     return NULL ;
     	  }
     	 int r = map_frame(ptr_page_directory,ptr_frame_info,(uint32)alloc_page, PERM_WRITEABLE|PERM_PRESENT);
@@ -187,9 +186,10 @@ void* kmalloc(unsigned int size)
     	 alloc_page+=PAGE_SIZE;
 
     	 }
-
+    	//release_spinlock(&kheap);
     	 return va ;
      }
+   		//release_spinlock(&kheap);
      return NULL;
 }
 
@@ -204,15 +204,20 @@ void kfree(void* virtual_address)
 	if (virtual_address == NULL || virtual_address == (void*)hard_limit || virtual_address < (void*)KernHeapStart || virtual_address >(void*)KERNEL_HEAP_MAX ){
 		panic("Invalid address");
 	}
+	 //acquire_spinlock(&kheap);
+
      uint32 size = 0;
      uint32 index;
 
 	if (virtual_address < (void*)segment_break ){
+		//release_spinlock(&kheap);
 		free_block(virtual_address);
 	}
 
+
+
 	else {
-		for (uint32 x = 0 ; x<2000 ; x++ ){
+		for (uint32 x = 0 ; x<8000 ; x++ ){
 			if (prog[x].start == virtual_address){
 				size = prog[x].size;
 				index = x;
@@ -226,8 +231,11 @@ void kfree(void* virtual_address)
 			size--;
 
 		}
+
 		prog[index].size = 0;
 		prog[index].start = NULL;
+       	//release_spinlock(&kheap);
+
 	}
 }
 unsigned int kheap_physical_address(unsigned int virtual_address)
@@ -316,7 +324,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 
 	//case (4) same size
 	 if (virtual_address >=(void*) start_page_alloc && virtual_address < (void*)KERNEL_HEAP_MAX){
-	for (uint32 x = 0 ; x<2000 ; x++ ){
+	for (uint32 x = 0 ; x<8000 ; x++ ){
 		if (prog[x].start == virtual_address && prog[x].size == num_of_pages_new ){
 			return virtual_address;
 			break;
@@ -333,7 +341,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 		//case (6) still in page allocator
 		else if (new_size > (PAGE_SIZE/2)){
 			num_of_pages_old = 0 ;
-			for (uint32 x = 0 ; x<2000 ; x++ ){
+			for (uint32 x = 0 ; x<8000 ; x++ ){
 					if (prog[x].start == virtual_address){
 						num_of_pages_old = prog[x].size;
 						index = x;
@@ -359,7 +367,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			     uint32 va = (uint32)virtual_address + (num_of_pages_old*PAGE_SIZE);
 			     bool mark = 1;
 			        while(diff > 0){ // check if enough memory ba3do
-			        		for(int x = 0 ; x<2000 ; x++){
+			        		for(int x = 0 ; x<8000 ; x++){
 			        		     if (prog[x].start == (void*)va){
 			        		    	 mark = 0;
 			        		    	 break;
@@ -386,7 +394,7 @@ void *krealloc(void *virtual_address, uint32 new_size)
 			        		diff--;
 			                va+=PAGE_SIZE;
 			        	}
-			        	for(int x = 0 ; x<2000 ; x++){
+			        	for(int x = 0 ; x<8000 ; x++){
 			        	    if (prog[x].start == virtual_address){
 			        	    	prog[x].size = num_of_pages_new;
 			        	    	break;

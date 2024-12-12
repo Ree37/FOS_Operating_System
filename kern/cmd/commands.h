@@ -37,7 +37,7 @@ extern uint32 NUM_OF_COMMANDS ;
 int command_help(int , char **);
 int command_kernel_info(int , char **);
 
-
+int command_RR(int number_of_arguments, char **arguments);
 int command_calc_space(int number_of_arguments, char **arguments);
 int command_run_program(int argc, char **argv);
 int command_readmem_k(int number_of_arguments, char **arguments);

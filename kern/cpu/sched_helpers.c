@@ -26,6 +26,7 @@ void init_queue(struct Env_Queue* queue)
 	if(queue != NULL)
 	{
 		LIST_INIT(queue);
+
 	}
 }
 
@@ -153,9 +154,11 @@ void sched_insert_ready(struct Env* env)
 
 	assert(env != NULL);
 	{
-		//cprintf("\nInserting %d into ready queue 0\n", env->env_id);
+
 		env->env_status = ENV_READY ;
 		enqueue(&(ProcessQueues.env_ready_queues[env->priority]), env);
+		cprintf("\nInserting %d into ready queue 0\n", env->priority);
+
 	}
 }
 
@@ -539,10 +542,11 @@ void sched_run_all()
 	int q_size = LIST_SIZE(&ProcessQueues.env_new_queue);
 	for (int i = 0; i < q_size; ++i)
 	{
+
 		ptr_env = dequeue(&ProcessQueues.env_new_queue);
 		sched_insert_ready(ptr_env);
 	}
-
+     cprintf("yalhoiiiiii\n");
 	release_spinlock(&(ProcessQueues.qlock)); 	//CS on Qs
 	/*2015*///if scheduler not run yet, then invoke it!
 	if (mycpu()->scheduler_status == SCH_STOPPED)
@@ -709,7 +713,16 @@ void env_set_priority(int envID, int priority)
 
 	//Your code is here
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
+	acquire_spinlock(&ProcessQueues.qlock);
+	proc->priority = priority;
+    proc->tick = 0;
+    if (proc->env_status == ENV_READY){
+    	 cprintf("sys\n");
+	    sched_insert_ready(proc);
+	}
+
+    release_spinlock(&ProcessQueues.qlock);
 }
 
 void sched_set_starv_thresh(uint32 starvThresh)
@@ -717,5 +730,8 @@ void sched_set_starv_thresh(uint32 starvThresh)
 	//TODO: [PROJECT'24.MS3 - #06] [3] PRIORITY RR Scheduler - sched_set_starv_thresh
 	//Your code is here
 	//Comment the following line
-	panic("Not implemented yet");
+	//panic("Not implemented yet");
+	starvation = starvThresh;
+
+
 }

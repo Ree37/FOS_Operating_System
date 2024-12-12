@@ -68,7 +68,9 @@ inline struct FrameInfo** create_frames_storage(int numOfFrames)
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("create_frames_storage is not implemented yet");
 	//Your Code is Here...
+	acquire_spinlock(&MemFrameLists.mfllock);
 	struct FrameInfo** frame = kmalloc(sizeof(void*) * numOfFrames);
+	release_spinlock(&MemFrameLists.mfllock);
 	if(frame == NULL){
 		return NULL;
 	}
@@ -88,7 +90,10 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
 	//panic("create_share is not implemented yet");
 	//Your Code is Here...
+	acquire_spinlock(&MemFrameLists.mfllock);
 	struct Share* share = kmalloc(sizeof(struct Share));
+	release_spinlock(&MemFrameLists.mfllock);
+
 	if(share == NULL){
 		return NULL;
 	}
@@ -104,7 +109,9 @@ struct Share* create_share(int32 ownerID, char* shareName, uint32 size, uint8 is
 	uint32 noOfFrames = ROUNDUP(size,PAGE_SIZE)/PAGE_SIZE;
 	share->framesStorage = create_frames_storage(noOfFrames);
 	if(share->framesStorage == NULL){
+		acquire_spinlock(&MemFrameLists.mfllock);
 		kfree(share);
+		release_spinlock(&MemFrameLists.mfllock);
 		return NULL;
 	}
 	return share;
@@ -126,14 +133,14 @@ struct Share* get_share(int32 ownerID, char* name)
 	//Your Code is Here...
 	struct Share *i;
 
-	acquire_spinlock(&AllShares.shareslock);
+	//acquire_spinlock(&AllShares.shareslock);
 	LIST_FOREACH(i, &AllShares.shares_list){
 		if(i->ownerID == ownerID && strcmp(i->name,name) == 0){
-			release_spinlock(&AllShares.shareslock);
+			//release_spinlock(&AllShares.shareslock);
 			return i;
 		}
 	}
-	release_spinlock(&AllShares.shareslock);
+	//release_spinlock(&AllShares.shareslock);
 
 	return NULL;
 }
@@ -147,32 +154,37 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	//panic("createSharedObject is not implemented yet");
 	//Your Code is Here...
 
+
 	struct Env* myenv = get_cpu_proc(); //The calling environment
 	struct Share *obj;
 
+	acquire_spinlock(&MemFrameLists.mfllock);
 	//1. Allocate & Initialize a new share object
 	if (get_share(ownerID,shareName) != NULL){
+		release_spinlock(&MemFrameLists.mfllock);
 		return E_SHARED_MEM_EXISTS;
 	}
 
 	uint32 page_num = ROUNDUP(size, PAGE_SIZE) / PAGE_SIZE;
-	acquire_spinlock(&MemFrameLists.mfllock);
+
 	if (LIST_SIZE(&MemFrameLists.free_frame_list) < page_num) {
 		release_spinlock(&MemFrameLists.mfllock);
 		return E_NO_SHARE;
 	}
-	release_spinlock(&MemFrameLists.mfllock);
 
+	release_spinlock(&MemFrameLists.mfllock);
 	obj = create_share(ownerID,shareName,size,isWritable);
 	if (obj == NULL) {
+		//release_spinlock(&MemFrameLists.mfllock);
 		return E_NO_SHARE;
 	} else {
-		acquire_spinlock(&AllShares.shareslock);
-		LIST_INSERT_HEAD(&AllShares.shares_list, obj);
-		release_spinlock(&AllShares.shareslock);
-	}
-	cprintf("[TRACE]: createSharedObject va: %x, page_num: %d, name: %s\n", virtual_address, page_num, obj->name);
 
+		LIST_INSERT_HEAD(&AllShares.shares_list, obj);
+
+	}
+	//cprintf("[TRACE]: createSharedObject va: %x, page_num: %d, name: %s\n", virtual_address, page_num, obj->name);
+
+	acquire_spinlock(&MemFrameLists.mfllock);
 	for(int i = 0; i < page_num; i++){
 		//2. Add it to the (shares_list)
 		//3. Allocate ALL required space in the physical memory on a PAGE boundary
@@ -181,6 +193,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 		struct FrameInfo *frame;
 		allocate_frame(&frame);
 		if (frame == NULL) {
+			release_spinlock(&MemFrameLists.mfllock);
 			panic("No free frames");
 		} else {
 			map_frame(myenv->env_page_directory,frame,(uint32)virtual_address,PERM_PRESENT | PERM_WRITEABLE | PERM_USER);
@@ -188,7 +201,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 			virtual_address += PAGE_SIZE;
 		}
 	}
-
+	release_spinlock(&MemFrameLists.mfllock);
 	return obj->ID;
 }
 
@@ -203,9 +216,11 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 	//panic("getSharedObject is not implemented yet");
 	//Your Code is Here...
 
-	struct Env* myenv = get_cpu_proc(); //The calling environment
-	struct Share* share = get_share(ownerID, shareName);
 
+	struct Env* myenv = get_cpu_proc(); //The calling environment
+	acquire_spinlock(&MemFrameLists.mfllock);
+	struct Share* share = get_share(ownerID, shareName);
+	release_spinlock(&MemFrameLists.mfllock);
 	if (share == NULL) {
 		return E_SHARED_MEM_NOT_EXISTS;
 	} else {
@@ -216,10 +231,11 @@ int getSharedObject(int32 ownerID, char* shareName, void* virtual_address)
 			if (share->isWritable) {
 				perms = perms | PERM_WRITEABLE;
 			}
-
+			//release_spinlock(&MemFrameLists.mfllock);
 			map_frame(myenv->env_page_directory, share->framesStorage[i], (uint32)virtual_address, perms);
 			virtual_address += PAGE_SIZE;
 		}
+
 		return share->ID;
 	}
 }
