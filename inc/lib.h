@@ -83,7 +83,8 @@ void 	sys_set_uheap_strategy(uint32 heapStrategy);
 
 //Page File
 int 	sys_pf_calculate_allocated_pages(void);
-
+// SCHEDULER
+void sys_env_set_priority(int envID, int priority);
 //Semaphores
 
 

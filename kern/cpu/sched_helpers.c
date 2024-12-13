@@ -157,7 +157,7 @@ void sched_insert_ready(struct Env* env)
 
 		env->env_status = ENV_READY ;
 		enqueue(&(ProcessQueues.env_ready_queues[env->priority]), env);
-		cprintf("\nInserting %d into ready queue 0\n", env->priority);
+		//cprintf("\nInserting %d into ready queue 0\n", env->priority);
 
 	}
 }
@@ -546,7 +546,7 @@ void sched_run_all()
 		ptr_env = dequeue(&ProcessQueues.env_new_queue);
 		sched_insert_ready(ptr_env);
 	}
-     cprintf("yalhoiiiiii\n");
+
 	release_spinlock(&(ProcessQueues.qlock)); 	//CS on Qs
 	/*2015*///if scheduler not run yet, then invoke it!
 	if (mycpu()->scheduler_status == SCH_STOPPED)
@@ -714,15 +714,22 @@ void env_set_priority(int envID, int priority)
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");
-	acquire_spinlock(&ProcessQueues.qlock);
-	proc->priority = priority;
-    proc->tick = 0;
-    if (proc->env_status == ENV_READY){
-    	 cprintf("sys\n");
-	    sched_insert_ready(proc);
+	if(priority < num_of_ready_queues){
+	   proc->priority = priority;
+       proc->tick = 0;
+
+         if (proc->env_status == ENV_READY){
+    	    acquire_spinlock(&ProcessQueues.qlock);
+    	    sched_remove_ready(proc);
+	        sched_insert_ready(proc);
+	        release_spinlock(&ProcessQueues.qlock);
+	     }
+	}
+	else{
+		panic("INVALID PRIORITY");
 	}
 
-    release_spinlock(&ProcessQueues.qlock);
+
 }
 
 void sched_set_starv_thresh(uint32 starvThresh)

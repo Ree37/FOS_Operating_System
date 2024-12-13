@@ -94,7 +94,7 @@ struct Context {
   uint32 ebp;
   uint32 eip;
 };
-uint32 starvation;
+
 struct Env {
 	//================
 	/*MAIN INFO...*/
