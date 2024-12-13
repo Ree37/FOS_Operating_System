@@ -367,13 +367,17 @@ struct Env* fos_scheduler_PRIRR()
 		{
 			env->env_status = ENV_READY;
 			env->tick = 0;
+			acquire_spinlock(&(ProcessQueues.qlock));
 			sched_insert_ready(env);
+			release_spinlock(&ProcessQueues.qlock);
 		}
 
 		struct Env *next_env = NULL;
 		for(int i = 0 ; i < num_of_ready_queues ; i++){
 			if(queue_size(&(ProcessQueues.env_ready_queues[i])) != 0){
+				acquire_spinlock(&(ProcessQueues.qlock));
 				next_env = dequeue(&(ProcessQueues.env_ready_queues[i]));
+				release_spinlock(&ProcessQueues.qlock);
 				break;
 			}
 		}
@@ -399,9 +403,9 @@ void clock_interrupt_handler(struct Trapframe* tf)
 
 		for(int i = 1 ; i < num_of_ready_queues ; i++){
 		     for(int j = 0 ; j < queue_size(&(ProcessQueues.env_ready_queues[i])) ; j++){
-
+		    	    acquire_spinlock(&(ProcessQueues.qlock));
 					struct Env* env = dequeue((&(ProcessQueues.env_ready_queues[i])));
-
+					release_spinlock(&ProcessQueues.qlock);
 					if(env->tick > starvation)
 					{
 						env->priority--;
