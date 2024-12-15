@@ -714,7 +714,8 @@ void env_set_priority(int envID, int priority)
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");
-	if(priority < num_of_ready_queues){
+
+	if(priority < num_of_ready_queues && priority >= 0){
 	   proc->priority = priority;
        proc->tick = 0;
 
@@ -738,6 +739,7 @@ void sched_set_starv_thresh(uint32 starvThresh)
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");
+
 	starvation = starvThresh;
 
 

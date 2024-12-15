@@ -253,20 +253,22 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//panic("Not implemented yet");
 
 
-	//sched_delete_ready_queues();
-
+	sched_delete_ready_queues();
 
 	num_of_ready_queues = numOfPriorities;
+
+	ProcessQueues.env_ready_queues = kmalloc(sizeof(struct Env_Queue)* num_of_ready_queues);
+	quantums = kmalloc(num_of_ready_queues * sizeof(uint8)) ;
 	quantums[0]= quantum;
+
 	sched_set_starv_thresh(starvThresh);
 
-	for (int i = 0 ; i < num_of_ready_queues ; i++){
+	acquire_spinlock(&(ProcessQueues.qlock));
+	for (int i = 1 ; i < num_of_ready_queues ; i++){
+
 		init_queue(&(ProcessQueues.env_ready_queues[i]));
 	}
-
-
-
-
+	release_spinlock(&ProcessQueues.qlock);
 
 
 	//=========================================
@@ -361,23 +363,21 @@ struct Env* fos_scheduler_PRIRR()
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");
+    //cprintf("mmmm\n");
 
 	struct Env *env = get_cpu_proc();
 		if (env != NULL)
 		{
-			env->env_status = ENV_READY;
 			env->tick = 0;
-			acquire_spinlock(&(ProcessQueues.qlock));
+			//acquire_spinlock(&(ProcessQueues.qlock));
 			sched_insert_ready(env);
-			release_spinlock(&ProcessQueues.qlock);
+			//release_spinlock(&ProcessQueues.qlock);
 		}
 
 		struct Env *next_env = NULL;
 		for(int i = 0 ; i < num_of_ready_queues ; i++){
 			if(queue_size(&(ProcessQueues.env_ready_queues[i])) != 0){
-				acquire_spinlock(&(ProcessQueues.qlock));
 				next_env = dequeue(&(ProcessQueues.env_ready_queues[i]));
-				release_spinlock(&ProcessQueues.qlock);
 				break;
 			}
 		}
@@ -393,19 +393,19 @@ struct Env* fos_scheduler_PRIRR()
 //========================================
 void clock_interrupt_handler(struct Trapframe* tf)
 {
-	//cprintf("clock\n");
+
 	if (isSchedMethodPRIRR())
 	{
 		//TODO: [PROJECT'24.MS3 - #09] [3] PRIORITY RR Scheduler - clock_interrupt_handler
 		//Your code is here
 		//Comment the following line
 		//panic("Not implemented yet");
-
+		//cprintf("clock\n");
 		for(int i = 1 ; i < num_of_ready_queues ; i++){
 		     for(int j = 0 ; j < queue_size(&(ProcessQueues.env_ready_queues[i])) ; j++){
-		    	    acquire_spinlock(&(ProcessQueues.qlock));
+		    	 acquire_spinlock(&(ProcessQueues.qlock));
 					struct Env* env = dequeue((&(ProcessQueues.env_ready_queues[i])));
-					release_spinlock(&ProcessQueues.qlock);
+				release_spinlock(&ProcessQueues.qlock);
 					if(env->tick > starvation)
 					{
 						env->priority--;
