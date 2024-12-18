@@ -356,12 +356,31 @@ void sys_set_uheap_strategy(uint32 heapStrategy)
 /* SEMAPHORES SYSTEM CALLS */
 /*******************************/
 //[PROJECT'24.MS3] ADD SUITABLE CODE HERE
+
 void sys_env_set_priority(int envID, int priority)
 {
 	env_set_priority(envID ,priority );
 	return;
 }
-
+void sys_init_queue(struct Env_Queue* queue){
+	init_queue(queue);
+}
+void sys_insert_ready(struct Env* env){
+	acquire_spinlock(&ProcessQueues.qlock);
+	sched_insert_ready0(env);
+	release_spinlock(&ProcessQueues.qlock);
+}
+struct Env* sys_dequeue(struct Env_Queue* queue){
+	return dequeue(queue);
+}
+void sys_sleep(struct Env_Queue* queue, uint32* lock) {
+	acquire_spinlock(&ProcessQueues.qlock);
+	cur_env->env_status = ENV_BLOCKED;
+	enqueue(queue, cur_env);
+	*lock = 0;
+	sched();
+	release_spinlock(&ProcessQueues.qlock);
+}
 
 /*******************************/
 /* SHARED MEMORY SYSTEM CALLS */
@@ -697,6 +716,17 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		sys_utilities((char*)a1, (int)a2);
 		return 0;
 
+	case SYS_init_queue:
+		sys_init_queue((struct Env_Queue*) a1);
+		return 0;
+	case SYS_insert_ready:
+		sys_insert_ready((struct Env*) a1);
+		return 0;
+	case SYS_dequeue:
+		return (uint32)sys_dequeue((struct Env_Queue*) a1);
+	case SYS_sleep:
+		sys_sleep((struct Env_Queue*)a1, (uint32*)a2);
+		return 0;
 	case NSYSCALLS:
 		return 	-E_INVAL;
 		break;

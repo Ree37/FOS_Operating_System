@@ -86,7 +86,10 @@ int 	sys_pf_calculate_allocated_pages(void);
 // SCHEDULER
 void sys_env_set_priority(int envID, int priority);
 //Semaphores
-
+void sys_init_queue(struct Env_Queue* queue);
+void sys_insert_ready(struct Env* env);
+struct Env* sys_dequeue(struct Env_Queue* queue);
+void sys_sleep(struct Env_Queue* queue, uint32* lock);
 
 //Sharing
 //2017
