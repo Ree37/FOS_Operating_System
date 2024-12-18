@@ -79,6 +79,7 @@ struct Command commands[] =
 		//********************************//
 		{ "rub", "reads block of bytes from specific location in given environment" ,command_readuserblock, 3},
 		//TODO: [PROJECT'24.MS3 - #07] [3] PRIORITY RR Scheduler - initialize command
+		{"schedPRIRR","Switch & initialize the scheduler to PRIORITY RR with given #priorities, quantum and starvation threshold",command_RR,3},
 
 		//**************************************//
 		/* COMMANDS WITH AT LEAST ONE ARGUMENT */
@@ -471,7 +472,13 @@ struct Env * CreateEnv(int number_of_arguments, char **arguments)
 
 	return env;
 }
-
+int command_RR(int number_of_arguments, char **arguments){
+	uint8 numOfPriorities = strtol(arguments[1],NULL, 10);
+	uint8 quantum = strtol(arguments[2],NULL, 10);
+	uint32 starvThresh = strtol(arguments[3],NULL, 10);
+	sched_init_PRIRR( numOfPriorities,quantum  ,starvThresh );
+	return 0;
+}
 int command_run_program(int number_of_arguments, char **arguments)
 {
 	//[1] Create and initialize a new environment for the program to be run

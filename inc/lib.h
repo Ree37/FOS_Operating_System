@@ -70,6 +70,7 @@ void* 	sys_sbrk(int increment);
 //******************
 
 //User Heap
+void    sys_env_set_priority(int envID, int priority);
 void 	sys_free_user_mem(uint32 virtual_address, uint32 size);
 void	sys_allocate_user_mem(uint32 virtual_address, uint32 size);
 void	sys_allocate_chunk(uint32 virtual_address, uint32 size, uint32 perms);
@@ -82,7 +83,8 @@ void 	sys_set_uheap_strategy(uint32 heapStrategy);
 
 //Page File
 int 	sys_pf_calculate_allocated_pages(void);
-
+// SCHEDULER
+void sys_env_set_priority(int envID, int priority);
 //Semaphores
 void sys_init_queue(struct Env_Queue* queue);
 void sys_insert_ready(struct Env* env);

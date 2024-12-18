@@ -266,18 +266,80 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 	    			        }
 	    }
 
+	    else {
 
-	else
-	{
-		//cprintf("REPLACEMENT=========================WS Size = %d\n", wsSize );
-		//refer to the project presentation and documentation for details
-		//TODO: [PROJECT'24.MS3] [2] FAULT HANDLER II - Replacement
-		// Write your code here, remove the panic and write your code
-		cprintf("kkk%d\n" , wsSize);
-		panic("page_fault_handler() Replacement is not implemented yet...!!");
+	    struct WorkingSetElement *ws_element = faulted_env->page_last_WS_element;
+	    int ws_size = faulted_env->page_WS_max_size;
+	    int victim_found = 0;
+
+
+	    if (ws_element == NULL) {
+	    	panic("The working set is empty!");
+	    }
+
+	   for (int sweep = 0; sweep < ws_size; ++sweep)
+	   {
+	        uint32 virtual_address = ws_element->virtual_address;
+	        uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, virtual_address);
+	        uint32 used_bit = page_permissions & PERM_USED;
+	        uint32 modified_bit = page_permissions & PERM_MODIFIED;
+
+	    	if (ws_element->sweeps_counter >= page_WS_max_sweeps)
+	    	{
+	            if (used_bit)
+	            {
+	    		     pt_set_page_permissions(faulted_env->env_page_directory, virtual_address, 0, PERM_USED);
+	    		     ws_element->sweeps_counter = 0;
+	    		 }
+	            else {
+	    		     if (modified_bit) {
+	    		          uint32 *ptr_page_table;
+	    		          struct FrameInfo *frame_info = get_frame_info(faulted_env->env_page_directory, virtual_address, &ptr_page_table);
+
+	    		           if (frame_info) {
+	    		                if (pf_update_env_page(faulted_env, virtual_address, frame_info) != 0) {
+	    		                          panic("Failed to update page to the page file!");
+	    		                 }
+	    		             }
+	    		        }
+	    		     victim_found = 1;
+	    		        unmap_frame(faulted_env->env_page_directory, virtual_address);
+
+	    		        ws_element->virtual_address = 0;
+	    		        ws_element->sweeps_counter = 0;
+	    		        break;
+	    		 }
+	    	}
+
+	    	else {
+	    		  ws_element->sweeps_counter++;
+	       }
+
+	       ws_element = ws_element->prev_next_info.le_next;
+	       if (ws_element == NULL)
+	       {
+	    	      ws_element = faulted_env->page_WS_list.lh_first; // Wrap around to the start
+	       }
+	   }
+	   if (victim_found) {
+	    		            struct FrameInfo* Frame_For_Faulted_Page = NULL;
+	    		            allocate_frame(&Frame_For_Faulted_Page);
+	    		            if (!Frame_For_Faulted_Page) {
+	    		                panic("No free frame available to handle page fault!");
+	    		            }
+
+	    		            map_frame(faulted_env->env_page_directory, Frame_For_Faulted_Page, fault_va, PERM_PRESENT | PERM_WRITEABLE | PERM_USER);
+
+	    		             pf_read_env_page(faulted_env, (void*)fault_va);
+
+	    		            ws_element->virtual_address = fault_va;
+	    		            ws_element->sweeps_counter = 0;
+	   }
+
+	    		        faulted_env->page_last_WS_element = ws_element;
 	}
-}
 
+}
 void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va)
 {
 	//[PROJECT] PAGE FAULT HANDLER WITH BUFFERING
