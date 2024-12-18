@@ -171,7 +171,7 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 		LIST_INSERT_HEAD(&AllShares.shares_list, obj);
 		release_spinlock(&AllShares.shareslock);
 	}
-	cprintf("[TRACE]: createSharedObject va: %x, page_num: %d, name: %s\n", virtual_address, page_num, obj->name);
+	//cprintf("[TRACE]: createSharedObject va: %x, page_num: %d, name: %s\n", virtual_address, page_num, obj->name);
 
 	for(int i = 0; i < page_num; i++){
 		//2. Add it to the (shares_list)
