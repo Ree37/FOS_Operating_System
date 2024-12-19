@@ -34,6 +34,13 @@ _main(void)
 			strcconcat(initname, index, name);
 			vars[s] = smalloc(name, PAGE_SIZE, 1);
 			*vars[s] = s;
+if (s % 100 == 0) {
+                cprintf("create shared object '%s'. "
+                        "[%3d/%3d]\n",
+                        name,
+                        s + 1,
+                        NUM_OF_OBJS);
+            }
 		}
 		for (int s = 0; s < NUM_OF_OBJS; ++s)
 		{

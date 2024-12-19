@@ -63,7 +63,7 @@ void signal_semaphore(struct semaphore sem)
 		if(sem.semdata->count <= 0){
 			//1.remove the proccess from the s.queue
 			//2.put the proccess to the ready list
-			sys_insert_ready(sys_dequeue(&sem.semdata->queue));
+			sys_insert_ready(&sem.semdata->queue);
 		}
 		//se the s.lock = 0
 		sem.semdata->lock = 0;
