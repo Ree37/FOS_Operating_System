@@ -359,9 +359,10 @@ void sys_set_uheap_strategy(uint32 heapStrategy)
 void sys_init_queue(struct Env_Queue* queue){
 	init_queue(queue);
 }
-void sys_insert_ready(struct Env* env){
+void sys_insert_ready(struct Env_Queue* env){
 	acquire_spinlock(&ProcessQueues.qlock);
-	sched_insert_ready0(env);
+	struct Env* e = dequeue(env);
+	sched_insert_ready(e);
 	release_spinlock(&ProcessQueues.qlock);
 }
 struct Env* sys_dequeue(struct Env_Queue* queue){
@@ -710,7 +711,7 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		sys_init_queue((struct Env_Queue*) a1);
 		return 0;
 	case SYS_insert_ready:
-		sys_insert_ready((struct Env*) a1);
+		sys_insert_ready((struct Env_Queue*) a1);
 		return 0;
 	case SYS_dequeue:
 		return (uint32)sys_dequeue((struct Env_Queue*) a1);

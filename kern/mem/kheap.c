@@ -166,9 +166,10 @@ void* kmalloc(unsigned int size)
 	if(size > MAX){
 	    return NULL;
 	 }
-
+	 acquire_spinlock(&MemFrameLists.mfllock);
 	 if (size <= (PAGE_SIZE/2)){ // block allocator
 		   void * alloc_block =(void*) alloc_block_FF(size);
+		 release_spinlock(&MemFrameLists.mfllock);
 	       return alloc_block;
 	 }
 
@@ -180,6 +181,7 @@ void* kmalloc(unsigned int size)
     	 struct FrameInfo *ptr_frame_info = get_frame_info(ptr_page_directory ,(uint32)alloc_page , &ptr_page_table);
     	 int alloc = allocate_frame(&ptr_frame_info);
     	 if (alloc == E_NO_MEM){
+    		 release_spinlock(&MemFrameLists.mfllock);
     	     return NULL ;
     	  }
     	 int r = map_frame(ptr_page_directory,ptr_frame_info,(uint32)alloc_page, PERM_WRITEABLE|PERM_PRESENT);
@@ -187,9 +189,10 @@ void* kmalloc(unsigned int size)
     	 alloc_page+=PAGE_SIZE;
 
     	 }
-
+    	 release_spinlock(&MemFrameLists.mfllock);
     	 return va ;
      }
+     release_spinlock(&MemFrameLists.mfllock);
      return NULL;
 }
 

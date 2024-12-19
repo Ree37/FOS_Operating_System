@@ -323,7 +323,7 @@ void sys_init_queue(struct Env_Queue* queue){
 	syscall(SYS_init_queue,(uint32) queue,0,0,0,0);
 	return;
 }
-void sys_insert_ready(struct Env* env){
+void sys_insert_ready(struct Env_Queue* env){
 	syscall(SYS_insert_ready,(uint32)env,0,0,0,0);
 	return;
 }
