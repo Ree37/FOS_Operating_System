@@ -57,6 +57,8 @@ enum
 	SYS_insert_ready,
 	SYS_dequeue,
 	SYS_sleep,
+	SYS_get_shared_id,
+	SYS_set_shared_id,
 	//=====================================================================
 	NSYSCALLS
 };

@@ -406,6 +406,28 @@ int sys_freeSharedObject(int32 sharedObjectID, void *startVA)
 	return freeSharedObject(sharedObjectID, startVA);
 }
 
+int32 sys_get_shared_id(uint32 va){
+	uint32* tbl = NULL;
+	struct FrameInfo* frame = get_frame_info(cur_env->env_page_directory, va, &tbl);
+
+	if (frame == NULL)
+	{
+		return 0;
+	}
+
+	return frame->id;
+}
+
+void sys_set_shared_id(int32 id, uint32 va){
+	uint32* tbl = NULL;
+	struct FrameInfo* frame = get_frame_info(cur_env->env_page_directory, va, &tbl);
+
+	if (frame != NULL)
+	{
+		frame->id = id;
+	}
+}
+
 /*********************************/
 /* USER ENVIRONMENT SYSTEM CALLS */
 /*********************************/
@@ -727,6 +749,11 @@ uint32 syscall(uint32 syscallno, uint32 a1, uint32 a2, uint32 a3, uint32 a4, uin
 		return (uint32)sys_dequeue((struct Env_Queue*) a1);
 	case SYS_sleep:
 		sys_sleep((struct Env_Queue*)a1, (uint32*)a2);
+		return 0;
+	case SYS_get_shared_id:
+		return (sys_get_shared_id((uint32)a1));
+	case SYS_set_shared_id:
+		sys_set_shared_id(a1, (uint32)a2);
 		return 0;
 	case NSYSCALLS:
 		return 	-E_INVAL;

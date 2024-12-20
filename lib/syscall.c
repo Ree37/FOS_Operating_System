@@ -342,3 +342,11 @@ void sys_sleep(struct Env_Queue* queue, uint32* lock) {
 	return;
 }
 
+int32 sys_get_shared_id(uint32 va){
+	return (uint32) syscall(SYS_get_shared_id, va, 0, 0, 0, 0);
+}
+
+void sys_set_shared_id(int32 id, uint32 va){
+	syscall(SYS_set_shared_id, id, va, 0, 0, 0);
+	return;
+}
