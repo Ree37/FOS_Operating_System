@@ -8,6 +8,7 @@
 #include <kern/trap/fault_handler.h>
 #include <kern/disk/pagefile_manager.h>
 #include <kern/proc/user_environment.h>
+#include "inc/mmu.h"
 #include "kheap.h"
 #include "memory_manager.h"
 #include <inc/queue.h>
@@ -130,7 +131,7 @@ void* sys_sbrk(int numOfPages)
 	 * NOTES:
 	 * 	1) As in real OS, allocate pages lazily. While sbrk moves the segment break, pages are not allocated
 	 * 		until the user program actually tries to access data in its heap (i.e. will be allocated via the fault handler).
-	 * 	2) Allocating additional pages for a process’ heap will fail if, for example, the free frames are exhausted
+	 * 	2) Allocating additional pages for a processï¿½ heap will fail if, for example, the free frames are exhausted
 	 * 		or the break exceed the limit of the dynamic allocator. If sys_sbrk fails, the net effect should
 	 * 		be that sys_sbrk returns (void*) -1 and that the segment break and the process heap are unaffected.
 	 * 		You might have to undo any operations you have done so far in this case.
@@ -202,7 +203,7 @@ void allocate_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 			if (ret == TABLE_NOT_EXIST || ptr_page_table == NULL ){
 				create_page_table(e->env_page_directory , virtual_address);
 			}
-			pt_set_page_permissions(e->env_page_directory , virtual_address , PERM_AVAILABLE , 0);
+			pt_set_page_permissions(e->env_page_directory , virtual_address , PERM_LAZY_MARK , 0);
 		num_of_pages--;
 		virtual_address+=PAGE_SIZE;
 	}
@@ -229,7 +230,7 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
 	uint32 va = virtual_address;
 	while(size > 0 ){
 
-		pt_set_page_permissions(e->env_page_directory , va , 0 , PERM_AVAILABLE);
+		pt_set_page_permissions(e->env_page_directory , va , 0 , PERM_LAZY_MARK);
 			env_page_ws_invalidate( e , va);
 			pf_remove_env_page( e , va);
 
@@ -262,4 +263,3 @@ void move_user_mem(struct Env* e, uint32 src_virtual_address, uint32 dst_virtual
 //=================================================================================//
 //========================== END USER CHUNKS MANIPULATION =========================//
 //=================================================================================//
-
