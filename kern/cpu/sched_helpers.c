@@ -730,7 +730,6 @@ void env_set_priority(int envID, int priority)
 		panic("INVALID PRIORITY");
 	}
 
-
 }
 
 void sched_set_starv_thresh(uint32 starvThresh)
@@ -739,7 +738,7 @@ void sched_set_starv_thresh(uint32 starvThresh)
 	//Your code is here
 	//Comment the following line
 	//panic("Not implemented yet");
-
+    if(starvThresh > 0)
 	starvation = starvThresh;
 
 

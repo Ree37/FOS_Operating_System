@@ -252,23 +252,28 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//Comment the following line
 	//panic("Not implemented yet");
 
+   if(numOfPriorities > 0 && quantum > 0)
+   {
+	   sched_delete_ready_queues();
 
-	sched_delete_ready_queues();
+	   num_of_ready_queues = numOfPriorities;
+	   ProcessQueues.env_ready_queues = kmalloc(sizeof(struct Env_Queue)* num_of_ready_queues);
+	   quantums = kmalloc(num_of_ready_queues * sizeof(uint8)) ;
+	   quantums[0]= quantum;
+	   kclock_set_quantum(quantums[0]);
+	   sched_set_starv_thresh(starvThresh);
 
-	num_of_ready_queues = numOfPriorities;
+	   acquire_spinlock(&(ProcessQueues.qlock));
+	   for (int i = 1 ; i < num_of_ready_queues ; i++){
 
-	ProcessQueues.env_ready_queues = kmalloc(sizeof(struct Env_Queue)* num_of_ready_queues);
-	quantums = kmalloc(num_of_ready_queues * sizeof(uint8)) ;
-	quantums[0]= quantum;
-
-	sched_set_starv_thresh(starvThresh);
-
-	acquire_spinlock(&(ProcessQueues.qlock));
-	for (int i = 1 ; i < num_of_ready_queues ; i++){
-
-		init_queue(&(ProcessQueues.env_ready_queues[i]));
-	}
-	release_spinlock(&ProcessQueues.qlock);
+		   init_queue(&(ProcessQueues.env_ready_queues[i]));
+	    }
+	    release_spinlock(&ProcessQueues.qlock);
+   }
+   else
+   {
+	   panic("INVALID NUMBER");
+   }
 
 
 	//=========================================
@@ -369,9 +374,8 @@ struct Env* fos_scheduler_PRIRR()
 		if (env != NULL)
 		{
 			env->tick = 0;
-			//acquire_spinlock(&(ProcessQueues.qlock));
 			sched_insert_ready(env);
-			//release_spinlock(&ProcessQueues.qlock);
+
 		}
 
 		struct Env *next_env = NULL;
@@ -381,7 +385,7 @@ struct Env* fos_scheduler_PRIRR()
 				break;
 			}
 		}
-
+        //cprintf("marvel\n");
 		kclock_set_quantum(quantums[0]);
 		return next_env;
 
@@ -401,15 +405,16 @@ void clock_interrupt_handler(struct Trapframe* tf)
 		//Comment the following line
 		//panic("Not implemented yet");
 		//cprintf("clock\n");
+
 		for(int i = 1 ; i < num_of_ready_queues ; i++){
 		     for(int j = 0 ; j < queue_size(&(ProcessQueues.env_ready_queues[i])) ; j++){
-		    	 acquire_spinlock(&(ProcessQueues.qlock));
 					struct Env* env = dequeue((&(ProcessQueues.env_ready_queues[i])));
-				release_spinlock(&ProcessQueues.qlock);
 					if(env->tick > starvation)
 					{
-						env->priority--;
-						env->tick = 0;
+						  env->priority--;
+						  env->tick = 0;
+						 // cprintf("id%d ....... %d\n",env->env_id ,env->priority );
+
 					}
 					else
 					{
