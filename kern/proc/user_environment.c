@@ -864,6 +864,7 @@ uint32 __cur_k_stk = KERNEL_HEAP_START;
 //===========================================================
 // 5) ALLOCATE SPACE FOR USER KERNEL STACK (One Per Process):
 //===========================================================
+
 void* create_user_kern_stack(uint32* ptr_user_page_directory)
 {
 #if USE_KHEAP
@@ -875,6 +876,7 @@ void* create_user_kern_stack(uint32* ptr_user_page_directory)
 	//remember to leave its bottom page as a GUARD PAGE (i.e. not mapped)
 	//return a pointer to the start of the allocated space (including the GUARD PAGE)
 	//On failure: panic
+	init_spinlock(&fault, "Data of fault");
 void *User_Kern_Stack=kmalloc(KERNEL_STACK_SIZE);
 if(User_Kern_Stack==NULL){
 	panic("failed");
