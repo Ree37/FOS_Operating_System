@@ -252,7 +252,7 @@ void sched_init_PRIRR(uint8 numOfPriorities, uint8 quantum, uint32 starvThresh)
 	//Comment the following line
 	//panic("Not implemented yet");
 
-   if(numOfPriorities > 0 && quantum > 0 &&  starvThresh>0)
+   if(numOfPriorities > 0 && quantum > 0)
    {
 	   sched_delete_ready_queues();
 
