@@ -5,6 +5,7 @@
  *      Author: HP
  */
 
+
 #include "trap.h"
 #include <kern/proc/user_environment.h>
 #include <kern/cpu/sched.h>
@@ -68,6 +69,7 @@ int8 num_repeated_fault  = 0;
 struct Env* last_faulted_env = NULL;
 void fault_handler(struct Trapframe *tf)
 {
+
 	/******************************************************/
 	// Read processor's CR2 register to find the faulting address
 	uint32 fault_va = rcr2();
@@ -208,10 +210,12 @@ void fault_handler(struct Trapframe *tf)
 //=========================
 // [2] TABLE FAULT HANDLER:
 //=========================
+
 void table_fault_handler(struct Env * curenv, uint32 fault_va)
 {
 	//panic("table_fault_handler() is not implemented yet...!!");
 	//Check if it's a stack page
+
 	uint32* ptr_table;
 #if USE_KHEAP
 	{
@@ -239,9 +243,11 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 
 	    if (wsSize < (faulted_env->page_WS_max_size))
 	    {
+	    	acquire_spinlock(&fault);
 	    	struct FrameInfo* Frame_For_Faulted_Page = NULL;
 	    			        allocate_frame(&Frame_For_Faulted_Page);
 	    			        if (!Frame_For_Faulted_Page) {
+	    			        	release_spinlock(&fault);
 	    			            panic("No free frame available to handle page fault!");
 	    			        }
 	    			        map_frame(faulted_env->env_page_directory, Frame_For_Faulted_Page, fault_va, PERM_PRESENT | PERM_WRITEABLE | PERM_USER);
@@ -251,6 +257,7 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 	    			            if ((fault_va >= USER_HEAP_START && fault_va < USER_HEAP_MAX) || (fault_va < USTACKTOP && fault_va >= USTACKBOTTOM)) {
 	    			                struct WorkingSetElement* newElement = env_page_ws_list_create_element(faulted_env, fault_va);
 	    			                if (newElement == NULL) {
+	    			                	release_spinlock(&fault);
 	    			                    panic("No space to allocate a WorkingSetElement!");
 	    			                }
 	    			                LIST_INSERT_TAIL(&faulted_env->page_WS_list, newElement);
@@ -261,85 +268,118 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
 	    			                }
 	    			            } else {
 	    			                unmap_frame(faulted_env->env_page_directory, fault_va);
+	    			                release_spinlock(&fault);
 	    			                env_exit();
 	    			            }
 	    			        }
+	    			        release_spinlock(&fault);
 	    }
 
 	    else {
+	    	acquire_spinlock(&fault);
+	    	struct WorkingSetElement *ws_element = faulted_env->page_last_WS_element;
+	    	int ws_size = faulted_env->page_WS_max_size;
+	    	int victim_found = 0;
 
-	    struct WorkingSetElement *ws_element = faulted_env->page_last_WS_element;
-	    int ws_size = faulted_env->page_WS_max_size;
-	    int victim_found = 0;
+	    	if (ws_element == NULL) {
+	    		release_spinlock(&fault);
+	    	    panic("The working set is empty!");
+	    	}
+	    	  // cprintf("first /n");
+	    	       // env_page_ws_print(faulted_env);
+
+	    	while (!victim_found) {
+	    	    uint32 virtual_address = ws_element->virtual_address;
+	    	    uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, virtual_address);
+
+	    	    uint32 used_bit = page_permissions & PERM_USED;
+	    	    uint32 modified_bit = page_permissions & PERM_MODIFIED;
 
 
-	    if (ws_element == NULL) {
-	    	panic("The working set is empty!");
-	    }
+	    	    if (used_bit) {
+	    	        pt_set_page_permissions(faulted_env->env_page_directory, virtual_address, 0, PERM_USED);
+	    	        ws_element->sweeps_counter = 0;
+	    	        ws_element = ws_element->prev_next_info.le_next;
+	    	      	    	    if (ws_element == NULL) {
+	    	      	    	        ws_element = faulted_env->page_WS_list.lh_first; // Wrap around to the start
+	    	      	    	    }
 
-	   for (int sweep = 0; sweep < ws_size; ++sweep)
-	   {
-	        uint32 virtual_address = ws_element->virtual_address;
-	        uint32 page_permissions = pt_get_page_permissions(faulted_env->env_page_directory, virtual_address);
-	        uint32 used_bit = page_permissions & PERM_USED;
-	        uint32 modified_bit = page_permissions & PERM_MODIFIED;
+	    	        continue;
+	    	    }
 
-	    	if (ws_element->sweeps_counter >= page_WS_max_sweeps)
-	    	{
-	            if (used_bit)
-	            {
-	    		     pt_set_page_permissions(faulted_env->env_page_directory, virtual_address, 0, PERM_USED);
-	    		     ws_element->sweeps_counter = 0;
-	    		 }
-	            else {
-	    		     if (modified_bit) {
-	    		          uint32 *ptr_page_table;
-	    		          struct FrameInfo *frame_info = get_frame_info(faulted_env->env_page_directory, virtual_address, &ptr_page_table);
+	    	    int threshold;
+	    	    if (page_WS_max_sweeps < 0) {
+	    	        if (modified_bit) {
+	    	            threshold = -page_WS_max_sweeps + 1;
+	    	        } else {
+	    	            threshold = -page_WS_max_sweeps;
+	    	        }
+	    	    } else {
+	    	        threshold = page_WS_max_sweeps;
+	    	    }
 
-	    		           if (frame_info) {
-	    		                if (pf_update_env_page(faulted_env, virtual_address, frame_info) != 0) {
-	    		                          panic("Failed to update page to the page file!");
-	    		                 }
-	    		             }
-	    		        }
-	    		     victim_found = 1;
-	    		        unmap_frame(faulted_env->env_page_directory, virtual_address);
 
-	    		        ws_element->virtual_address = 0;
-	    		        ws_element->sweeps_counter = 0;
-	    		        break;
-	    		 }
+
+	    	    if (ws_element->sweeps_counter >= threshold) {
+
+	    	        if (modified_bit) {
+	    	            uint32 *ptr_page_table;
+	    	            struct FrameInfo *frame_info = get_frame_info(faulted_env->env_page_directory, virtual_address, &ptr_page_table);
+
+	    	            if (frame_info) {
+	    	                if (pf_update_env_page(faulted_env, virtual_address, frame_info) != 0) {
+	    	                	release_spinlock(&fault);
+	    	                    panic("Failed to update page to the page file!");
+	    	                }
+	    	            }
+	    	        }
+
+	    	        unmap_frame(faulted_env->env_page_directory, virtual_address);
+	    	        ws_element->virtual_address = 0;
+	    	        ws_element->sweeps_counter = 0;
+
+	    	        victim_found = 1;
+
+	    	        break;
+	    	    } else {
+	    	        ws_element->sweeps_counter++;
+	    	    }
+
+
+	    	    ws_element = ws_element->prev_next_info.le_next;
+	    	    if (ws_element == NULL) {
+	    	        ws_element = faulted_env->page_WS_list.lh_first; // Wrap around to the start
+	    	    }
 	    	}
 
-	    	else {
-	    		  ws_element->sweeps_counter++;
-	       }
+	    	    struct FrameInfo *Frame_For_Faulted_Page = NULL;
 
-	       ws_element = ws_element->prev_next_info.le_next;
-	       if (ws_element == NULL)
-	       {
-	    	      ws_element = faulted_env->page_WS_list.lh_first; // Wrap around to the start
-	       }
-	   }
-	   if (victim_found) {
-	    		            struct FrameInfo* Frame_For_Faulted_Page = NULL;
-	    		            allocate_frame(&Frame_For_Faulted_Page);
-	    		            if (!Frame_For_Faulted_Page) {
-	    		                panic("No free frame available to handle page fault!");
-	    		            }
+	    	    allocate_frame(&Frame_For_Faulted_Page);
+	    	    if (!Frame_For_Faulted_Page) {
+	    	    	release_spinlock(&fault);
+	    	        panic("No free frame available to handle page fault!");
+	    	    }
 
-	    		            map_frame(faulted_env->env_page_directory, Frame_For_Faulted_Page, fault_va, PERM_PRESENT | PERM_WRITEABLE | PERM_USER);
+	    	    map_frame(faulted_env->env_page_directory, Frame_For_Faulted_Page, fault_va, PERM_PRESENT | PERM_WRITEABLE | PERM_USER  );
+	    	    pf_read_env_page(faulted_env, (void *)fault_va);
 
-	    		             pf_read_env_page(faulted_env, (void*)fault_va);
+	    	    if (ws_element != NULL) {
+	    	        ws_element->virtual_address = fault_va;
+	    	        ws_element->sweeps_counter = 0;
 
-	    		            ws_element->virtual_address = fault_va;
-	    		            ws_element->sweeps_counter = 0;
-	   }
+	    	        // Move to the next element for the next fault
+	    	        ws_element = ws_element->prev_next_info.le_next;
+	    	        if (ws_element == NULL) {
+	    	            ws_element = faulted_env->page_WS_list.lh_first; // Wrap around to start
+	    	        }
+	    	    }
 
-	    		        faulted_env->page_last_WS_element = ws_element;
-	}
+   faulted_env->page_last_WS_element = ws_element;
+        //cprintf("final /n");
+        //env_page_ws_print(faulted_env);
+   release_spinlock(&fault);
 
-}
+}}
 void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va)
 {
 	//[PROJECT] PAGE FAULT HANDLER WITH BUFFERING

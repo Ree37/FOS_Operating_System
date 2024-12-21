@@ -22,7 +22,7 @@ struct program_size {
 	uint32 size  ;
 	void *start ;
 };
-struct program_size prog[8000] = {0};
+struct program_size prog[10000] = {0};
 ///////////////////////////////////////////////////////////
 void* firstva(uint32 num , uint32 start){
 	uint32 count = 0;
@@ -32,7 +32,7 @@ void* firstva(uint32 num , uint32 start){
 	for(uint32 i = start ; i < (uint32) USER_HEAP_MAX ; i+=PAGE_SIZE){
 		bool mark = 0;
 
-		for(int x = 0 ; x<8000 ; x++){
+		for(int x = 0 ; x<10000 ; x++){
 		     if (prog[x].start == (void*)i){
 		    	 i = (uint32)prog[x].start + (prog[x].size*PAGE_SIZE) - PAGE_SIZE;
 		    	 mark = 1;
@@ -54,7 +54,7 @@ void* firstva(uint32 num , uint32 start){
 	     }
 	}
 	if (count == num){
-		for(int x = 0 ; x<8000 ; x++){
+		for(int x = 0 ; x<10000 ; x++){
 		    if (prog[x].size == 0){
 		         prog[x].size = num;
 		         prog[x].start = va;
@@ -130,7 +130,7 @@ void free(void* virtual_address)
     }
 
 	else {
-	      for (uint32 x = 0 ; x<8000 ; x++ ){
+	      for (uint32 x = 0 ; x<10000 ; x++ ){
 			if (prog[x].start == virtual_address){
 				size = prog[x].size;
 				index = x;

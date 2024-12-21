@@ -730,7 +730,6 @@ void env_set_priority(int envID, int priority)
 		panic("INVALID PRIORITY");
 	}
 
-
 }
 
 void sched_set_starv_thresh(uint32 starvThresh)
