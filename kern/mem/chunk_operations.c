@@ -233,14 +233,8 @@ void free_user_mem(struct Env* e, uint32 virtual_address, uint32 size)
     while (ws_element != e->page_last_WS_element)
     {
 
-//<<<<<<< Shared-Bonus
-		pt_set_page_permissions(e->env_page_directory , va , 0 , PERM_LAZY_MARK);
-			env_page_ws_invalidate( e , va);
-			pf_remove_env_page( e , va);
-//=======
         LIST_REMOVE(&(e->page_WS_list), ws_element);
         LIST_INSERT_TAIL(&(e->page_WS_list), ws_element);
-//>>>>>>> main
 
         struct WorkingSetElement *next = LIST_NEXT(ws_element);
         last = ws_element;

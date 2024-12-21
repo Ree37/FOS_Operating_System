@@ -119,7 +119,7 @@ void free(void* virtual_address)
 	//TODO: [PROJECT'24.MS2 - #14] [3] USER HEAP [USER SIDE] - free()
 	// Write your code here, remove the panic and write your code
 	//panic("free() is not implemented yet...!!");
-	if (virtual_address == NULL || virtual_address == (void*)myEnv->hard_limit || virtual_address < (void*)myEnv->UserHeapStart || virtual_address >(void*)USER_HEAP_MAX){
+	if (virtual_address == NULL || virtual_address == (void*)myEnv->hard_limit || virtual_address < (void*)myEnv->UserHeapStart || virtual_address >= (void*)USER_HEAP_MAX){
 			panic("Invalid address");
 		}
 	uint32 size = 0;
