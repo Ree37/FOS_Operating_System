@@ -53,7 +53,10 @@ enum
 	SYS_free_user_mem,
 	SYS_allocate_user_mem,
 	SYS_env_set_priority,
-
+	SYS_init_queue,
+	SYS_insert_ready,
+	SYS_dequeue,
+	SYS_sleep,
 	//=====================================================================
 	NSYSCALLS
 };

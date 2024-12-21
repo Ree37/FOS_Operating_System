@@ -322,7 +322,23 @@ void sys_allocate_user_mem(uint32 virtual_address, uint32 size)
 //M3
 void sys_env_set_priority(int envID, int priority)
 {
-
 	syscall(SYS_env_set_priority, envID, priority, 0, 0, 0);
 	return;
 }
+void sys_init_queue(struct Env_Queue* queue){
+	syscall(SYS_init_queue,(uint32) queue,0,0,0,0);
+	return;
+}
+void sys_insert_ready(struct Env_Queue* env){
+	syscall(SYS_insert_ready,(uint32)env,0,0,0,0);
+	return;
+}
+struct Env* sys_dequeue(struct Env_Queue* queue){
+	return (struct Env*)syscall(SYS_dequeue,(uint32)queue,0,0,0,0);
+}
+
+void sys_sleep(struct Env_Queue* queue, uint32* lock) {
+	syscall(SYS_sleep,(uint32)queue,(uint32)lock,0,0,0);
+	return;
+}
+

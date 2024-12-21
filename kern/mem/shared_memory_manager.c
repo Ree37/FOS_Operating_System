@@ -184,7 +184,6 @@ int createSharedObject(int32 ownerID, char* shareName, uint32 size, uint8 isWrit
 	}
 	//cprintf("[TRACE]: createSharedObject va: %x, page_num: %d, name: %s\n", virtual_address, page_num, obj->name);
 
-
 	for(int i = 0; i < page_num; i++){
 		struct FrameInfo *frame;
 		acquire_spinlock(&AllShares.shareslock);

@@ -378,7 +378,6 @@ void page_fault_handler(struct Env * faulted_env, uint32 fault_va)
         //cprintf("final /n");
         //env_page_ws_print(faulted_env);
    release_spinlock(&fault);
-
 }}
 void __page_fault_handler_with_buffering(struct Env * curenv, uint32 fault_va)
 {
