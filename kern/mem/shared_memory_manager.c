@@ -10,6 +10,7 @@
 
 #include <kern/proc/user_environment.h>
 #include <kern/trap/syscall.h>
+#include "kern/mem/paging_helpers.h"
 #include "kheap.h"
 #include "memory_manager.h"
 
@@ -271,7 +272,54 @@ int freeSharedObject(int32 sharedObjectID, void *startVA)
 {
 	//TODO: [PROJECT'24.MS2 - BONUS#4] [4] SHARED MEMORY [KERNEL SIDE] - freeSharedObject()
 	//COMMENT THE FOLLOWING LINE BEFORE START CODING
-	panic("freeSharedObject is not implemented yet");
+	//panic("freeSharedObject is not implemented yet");
 	//Your Code is Here...
 
+	//get shared object
+	struct Env* myenv = get_cpu_proc(); //The calling environment
+	struct Share* share = NULL;
+	LIST_FOREACH(share, &AllShares.shares_list)
+	{
+		if(share->ID == sharedObjectID)
+		{
+			break;
+		}
+	}
+	if (share == NULL)
+	{
+		return E_SHARED_MEM_NOT_EXISTS;
+	}
+
+	uint32 pages = ROUNDUP(share->size, PAGE_SIZE) / PAGE_SIZE;
+	uint32 start_va = (uint32)startVA;
+	for (int i = 0; i < pages; i++)
+	{
+		uint32 virtual_address = start_va + i * PAGE_SIZE;
+		unmap_frame(myenv->env_page_directory, virtual_address);
+		uint32* page_tbl_start = NULL;
+		get_page_table(myenv->env_page_directory, virtual_address, &page_tbl_start);
+		bool is_table_used = 0;
+		for (int j = 0; j < 1024; j++)
+		{
+			uint32 entry = page_tbl_start[j];
+			if ((entry & PERM_PRESENT) == PERM_PRESENT || (entry & PERM_LAZY_MARK) == PERM_LAZY_MARK)
+			{
+				is_table_used = 1;
+				break;
+			}
+		}
+		if (is_table_used == 0)
+		{
+			kfree(page_tbl_start);
+			pd_clear_page_dir_entry(myenv->env_page_directory, virtual_address);
+		}
+	}
+	acquire_spinlock(&AllShares.shareslock);
+	share->references--;
+	release_spinlock(&AllShares.shareslock);
+	if (share->references <= 0)
+	{
+		free_share(share);
+	}
+	return 0;
 }
